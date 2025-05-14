@@ -16,6 +16,16 @@ head{
     text-align: center;
 }
 
+.ql-editor img,
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px; /* o cualquier valor razonable */
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+
 .animatedButton{
     animation-duration: 10000ms;
 }
