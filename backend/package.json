@@ -22,5 +22,6 @@
     "lib": "lib",
     "test": "test"
   },
+  "devDependencies": {},
   "description": ""
 }
