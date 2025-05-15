@@ -1,90 +1,102 @@
-import ImageKit from "imagekit"
-import Post from "../models/post.model.js"
-import User from "../models/user.model.js"
+import ImageKit from "imagekit";
+import Post from "../models/post.model.js";
+import User from "../models/user.model.js";
 
-export const getPosts = async (req,res) => {
+// Inicialización de ImageKit dentro de una función para asegurar que las variables de entorno estén cargadas
+let imagekit;
 
-const page = parseInt(req.query.page) || 1
-const limit = parseInt(req.query.limit) || 2
-
-
-    const posts = await Post.find()
-        .populate("user", "username")
-        .limit(limit)
-        .skip((page - 1) * limit);
-
-        const totalPosts = await Post.countDocuments();
-        const hasMore = page * limit < totalPosts;
-
-    res.status(200).json({ posts, hasMore })
-}
-
-export const getPost = async (req,res) => {
-    const post = await Post.findOne({ slug: req.params.slug }).populate("user", "username img");
-    res.status(200).json(post)
-}
-
-export const createPost = async (req,res) => {
-    const clerkUserId = req.auth.userId
-
-    console.log(req.headers)
-
-    if(!clerkUserId){
-        return res.status(401).json("Not authenticated!")
+const getImageKitInstance = () => {
+  if (!imagekit) {
+    if (!process.env.IK_PUBLIC_KEY || !process.env.IK_PRIVATE_KEY || !process.env.IK_URL_ENDPOINT) {
+      throw new Error("Faltan variables de entorno para ImageKit");
     }
+    imagekit = new ImageKit({
+      urlEndpoint: process.env.IK_URL_ENDPOINT,
+      publicKey: process.env.IK_PUBLIC_KEY,
+      privateKey: process.env.IK_PRIVATE_KEY,
+    });
+  }
+  return imagekit;
+};
 
-    const user = await User.findOne({ clerkUserId })
-    
-    if(!user){
-        return res.status(404).json("User not found!")
-    }
+export const getPosts = async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 2;
 
-    let slug = req.body.title.replace(/ /g, "-").toLowerCase()
+  const posts = await Post.find()
+    .populate("user", "username")
+    .limit(limit)
+    .skip((page - 1) * limit);
 
-    let existingPost = await Post.findOne({ slug })
+  const totalPosts = await Post.countDocuments();
+  const hasMore = page * limit < totalPosts;
 
-    let counter = 2 
+  res.status(200).json({ posts, hasMore });
+};
 
-    while(existingPost){
-        slug = `${slug}-${counter}`
-        existingPost = await Post.findOne({ slug })
-        counter++
-    }
+export const getPost = async (req, res) => {
+  const post = await Post.findOne({ slug: req.params.slug }).populate("user", "username img");
+  res.status(200).json(post);
+};
 
-    const newPost = new Post({ user: user._id, slug, ...req.body })
+export const createPost = async (req, res) => {
+  const clerkUserId = req.auth.userId;
 
-    const post = await newPost.save()
-    res.status(200).json(post)
-}
+  if (!clerkUserId) {
+    return res.status(401).json("Not authenticated!");
+  }
 
-export const deletePost = async (req,res) => {
-    const clerkUserId = req.auth.userId
-    if(!clerkUserId){
-        return res.status(401).json("Not authenticated!")
-    }
+  const user = await User.findOne({ clerkUserId });
 
-    const user = await User.findOne({ clerkUserId })
-    
-    const deletedPost = await Post.findByIdAndDelete({
-        _id: req.params.id,
-        user: user._id,
-    })
+  if (!user) {
+    return res.status(404).json("User not found!");
+  }
 
-    if(!deletePost){
-        return res.status(403).json("You can delete only your posts!")
-    }
+  let slug = req.body.title.replace(/ /g, "-").toLowerCase();
 
-    res.status(200).json("Post has been deleted")
-}
+  let existingPost = await Post.findOne({ slug });
 
-const imagekit = new ImageKit({
-    urlEndpoint: process.env.IK_URL_ENDPOINT,
-    publicKey: process.env.IK_PUBLIC_KEY,
-    privateKey: process.env.IK_PRIVATE_KEY,
-})
+  let counter = 2;
 
-export const uploadAuth = async (req,res)=>{
+  while (existingPost) {
+    slug = `${slug}-${counter}`;
+    existingPost = await Post.findOne({ slug });
+    counter++;
+  }
 
-    const result = imagekit.getAuthenticationParameters()
-    res.send(result)
-}
+  const newPost = new Post({ user: user._id, slug, ...req.body });
+
+  const post = await newPost.save();
+  res.status(200).json(post);
+};
+
+export const deletePost = async (req, res) => {
+  const clerkUserId = req.auth.userId;
+  if (!clerkUserId) {
+    return res.status(401).json("Not authenticated!");
+  }
+
+  const user = await User.findOne({ clerkUserId });
+
+  const deletedPost = await Post.findOneAndDelete({
+    _id: req.params.id,
+    user: user._id,
+  });
+
+  if (!deletedPost) {
+    return res.status(403).json("You can delete only your posts!");
+  }
+
+  res.status(200).json("Post has been deleted");
+};
+
+export const uploadAuth = async (req, res) => {
+  try {
+    const imagekit = getImageKitInstance();
+    const result = imagekit.getAuthenticationParameters();
+    res.send(result);
+  } catch (error) {
+    console.error("Error initializing ImageKit:", error.message);
+    res.status(500).json({ error: "Error initializing ImageKit" });
+  }
+};
