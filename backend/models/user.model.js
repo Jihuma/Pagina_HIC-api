@@ -21,7 +21,7 @@ const userSchema = new Schema(
         img:{
             type: String,
         },
-        savePosts:{
+        savedPosts:{
             type:[String],
             default: [],
         },
