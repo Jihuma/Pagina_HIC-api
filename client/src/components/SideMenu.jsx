@@ -1,40 +1,210 @@
+import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
-import Search from "../components/Search"
+import Search from "./Search";
+import { Check } from 'lucide-react';
+
 const SideMenu = () => {
+  // Estado para el tamaño de la ventana
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+  // Estado para el filtro seleccionado
+  const [selectedFilter, setSelectedFilter] = useState('newest');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Función para manejar el cambio de filtro
+  const handleFilterChange = (value) => {
+    setSelectedFilter(value);
+  };
+
+  // Componente PuzzleCard modificado sin las bolitas
+  const PuzzleCard = ({ children, pieceBg, pageBg, className }) => {
+    return (
+      <div className={`puzzle-piece relative ${pieceBg} rounded-lg p-4 shadow-md transition-all duration-300 hover:shadow-lg ${className}`}>
+        {/* Contenido de la tarjeta */}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  // Datos para las categorías
+  const categories = [
+    {
+      id: 1,
+      title: "Child Health",
+      icon: "fas fa-child",
+      link: "/posts?cat=child-health",
+      color: "bg-blue-600 text-white",
+      hoverColor: "hover:bg-blue-700"
+    },
+    {
+      id: 2,
+      title: "Vaccination",
+      icon: "fas fa-syringe",
+      link: "/posts?cat=vaccination",
+      color: "bg-green-600 text-white",
+      hoverColor: "hover:bg-green-700"
+    },
+    {
+      id: 3,
+      title: "Nutrition",
+      icon: "fas fa-apple-alt",
+      link: "/posts?cat=nutrition",
+      color: "bg-orange-500 text-white",
+      hoverColor: "hover:bg-orange-600"
+    },
+    {
+      id: 4,
+      title: "Safety Tips",
+      icon: "fas fa-shield-alt",
+      link: "/posts?cat=safety",
+      color: "bg-red-600 text-white",
+      hoverColor: "hover:bg-red-700"
+    },
+    {
+      id: 5,
+      title: "Events",
+      icon: "fas fa-calendar-alt",
+      link: "/posts?cat=events",
+      color: "bg-purple-600 text-white",
+      hoverColor: "hover:bg-purple-700"
+    }
+  ];
+
   return (
     <div className='px-4 h-max sticky top-8'>
-      <h1 className="mb-4 text-sm font-medium">Search</h1>
-      <Search/>
-      <h1 className="mt-8 mb-4 text-sm font-medium">Filter</h1>
-      <div className="flex flex-col gap-2 text-sm">
-        <label htmlFor="" className="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="sort" value="newest" className="appearance-none w-4 h-4 border-[1.5px] bg-white border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"/>
-          Newest
-        </label>
-        <label htmlFor="" className="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="sort" value="popular" className="appearance-none w-4 h-4 border-[1.5px] bg-white border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"/>
-          Most Popular
-        </label>
-        <label htmlFor="" className="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="sort" value="trending" className="appearance-none w-4 h-4 border-[1.5px] bg-white border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"/>
-          Trending
-        </label>
-        <label htmlFor="" className="flex items-center gap-2 cursor-pointer">
-          <input type="radio" name="sort" value="oldest" className="appearance-none w-4 h-4 border-[1.5px] bg-white border-blue-800 cursor-pointer rounded-sm checked:bg-blue-800"/>
-          Oldest
-        </label>
+      {/* Barra de búsqueda con marco */}
+      <div className="mt-12 mb-8">
+        <div className="border-2 border-blue-200 rounded-lg p-1 shadow-md hover:shadow-lg transition-all duration-300 bg-white">
+          <div className="bg-gradient-to-r from-blue-50 to-white rounded-md">
+            <Search/>
+          </div>
+        </div>
       </div>
-      <h1 className="mt-8 mb-4 text-sm font-medium">Categories</h1>
-      <div className="flex flex-col gap-2 text-sm">
-        <Link className="underline" to="/posts">ALL</Link>
-        <Link className="underline" to="/posts?cat=web-design">Web Design</Link>
-        <Link className="underline" to="/posts?cat=development">Development</Link>
-        <Link className="underline" to="/posts?cat=databases">Databases</Link>
-        <Link className="underline" to="/posts?cat=seo">Search Engines</Link>
-        <Link className="underline" to="/posts?cat=marketing">Marketing</Link>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-md p-5 mb-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-5">Filter</h2>
+        
+        <div className="flex flex-col gap-3 text-sm">
+          {[
+            { value: 'newest', label: 'Newest' },
+            { value: 'popular', label: 'Most Popular' },
+            { value: 'trending', label: 'Trending' },
+            { value: 'oldest', label: 'Oldest' }
+          ].map((filter) => (
+            <label 
+              key={filter.value} 
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => handleFilterChange(filter.value)}
+            >
+              <div className="relative">
+                <div 
+                  className={`w-5 h-5 border-2 rounded-sm flex items-center justify-center transition-all duration-300 ${
+                    selectedFilter === filter.value 
+                      ? 'bg-blue-800 border-blue-800' 
+                      : 'border-blue-800 bg-white'
+                  }`}
+                >
+                  {selectedFilter === filter.value && (
+                    <Check 
+                      size={16} 
+                      className="text-white animate-scale-in" 
+                      strokeWidth={3}
+                    />
+                  )}
+                </div>
+              </div>
+              <span className={`transition-colors duration-200 ${selectedFilter === filter.value ? 'text-blue-800 font-medium' : 'text-gray-700'}`}>
+                {filter.label}
+              </span>
+            </label>
+          ))}
+        </div>
       </div>
+
+      {/* Categorías */}
+      <div className="bg-white rounded-md p-5 mb-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-5">Categorías</h2>
+        
+        <div className="flex flex-col gap-4">
+          {categories.map((category) => (
+            <Link key={category.id} to={category.link} className="block transform transition-transform hover:-translate-y-1">
+              <PuzzleCard 
+                pieceBg={category.color} 
+                pageBg="bg-white"
+                className={`${category.hoverColor}`}
+              >
+                {/* Icono con animación */}
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center icon-coin-flip">
+                    <i className={`${category.icon} text-sm`}></i>
+                  </div>
+                  
+                  {/* Título */}
+                  <h3 className="text-sm font-medium">{category.title}</h3>
+                </div>
+              </PuzzleCard>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Estilos CSS para la animación (eliminados los estilos de las pestañas) */}
+      <style jsx>{`
+        .puzzle-piece {
+          position: relative;
+        }
+        
+        /* Animación para los iconos */
+        .icon-coin-flip {
+          transition: transform 0.6s;
+          transform-style: preserve-3d;
+        }
+        
+        .puzzle-piece:hover .icon-coin-flip {
+          transform: rotateY(180deg);
+          animation: coinFlip 1.5s infinite;
+        }
+        
+        @keyframes coinFlip {
+          0% {
+            transform: rotateY(0);
+          }
+          50% {
+            transform: rotateY(180deg);
+          }
+          100% {
+            transform: rotateY(360deg);
+          }
+        }
+
+        @keyframes scale-in {
+          0% { transform: scale(0); }
+          80% { transform: scale(1.1); }
+          100% { transform: scale(1); }
+        }
+        
+        .animate-scale-in {
+          animation: scale-in 0.3s ease-out forwards;
+        }
+        
+        /* Eliminar el contorno negro al hacer clic */
+        input:focus, 
+        input:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          border-color: #e5e7eb !important;
+        }
+      `}</style>
     </div>
   );
 };
 
-export default SideMenu
+export default SideMenu;
