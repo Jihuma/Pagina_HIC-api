@@ -50,12 +50,12 @@ const Upload = ({ children, type, setProgress, setData }) => {
         onError={onError}
         onSuccess={onSuccess}
         onUploadProgress={onUploadProgress}
-        className=""
+        className="hidden" // Ocultar el input file predeterminado
         ref={ref}
         accept={`${type}/*`}
       />
-        <div className="cursor-pointer" onClick={() => ref.current.click()}>{children}</div>
-      </IKContext>
+      <div className="inline-block cursor-pointer" onClick={() => ref.current.click()}>{children}</div>
+    </IKContext>
   );
 };
 

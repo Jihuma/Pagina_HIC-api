@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body{
+    background-color: #e6e6ff;
+    width: 100vw;
+    overflow-x: hidden;
+    font-family: "Monstserrat", sans-serif;
+}
+
+head{
+    background-color: #3333cc;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+.ql-editor img,
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  max-height: 400px; /* o cualquier valor razonable */
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+
+.animatedButton{
+    animation-duration: 10000ms;
+}
+
+.ql-container{
+    border: none !important;
+}.ql-toolbar{
+    border: none !important;
+}
+.ql-editor{
+    border: none !important;
+}
