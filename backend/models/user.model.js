@@ -9,13 +9,13 @@ const userSchema = new Schema(
             unique: true,
         },
         username:{
-            type:String,
-            require:true,
+            type: String,
+            required: true,
             unique: true,
         },
         email:{
             type: String,
-            require: true,
+            required: true,
             unique: true,
         },
         img:{

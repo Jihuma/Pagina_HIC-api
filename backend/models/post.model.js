@@ -13,7 +13,7 @@ const postSchema = new Schema(
         },
         title:{
             type: String,
-            require: true,
+            required: true,
         },
         slug:{
             type: String,
