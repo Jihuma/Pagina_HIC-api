@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
+// Cambia esta línea
 import Search from "./Search";
+// Por esta línea
+import SearchExpanded from "./SearchExpanded";
 import { Check } from 'lucide-react';
 
 const SideMenu = () => {
@@ -40,40 +43,40 @@ const SideMenu = () => {
       title: "Child Health",
       icon: "fas fa-child",
       link: "/posts?cat=child-health",
-      color: "bg-blue-600 text-white",
-      hoverColor: "hover:bg-blue-700"
+      color: "bg-[#375D9D] text-white", // Pantone 7684
+      hoverColor: "hover:bg-[#2A4A80]"
     },
     {
       id: 2,
       title: "Vaccination",
       icon: "fas fa-syringe",
       link: "/posts?cat=vaccination",
-      color: "bg-green-600 text-white",
-      hoverColor: "hover:bg-green-700"
+      color: "bg-[#77BC1F] text-white", // Pantone 368
+      hoverColor: "hover:bg-[#65A01A]"
     },
     {
       id: 3,
       title: "Nutrition",
       icon: "fas fa-apple-alt",
       link: "/posts?cat=nutrition",
-      color: "bg-orange-500 text-white",
-      hoverColor: "hover:bg-orange-600"
+      color: "bg-[#E2231A] text-white", // Pantone 485
+      hoverColor: "hover:bg-[#C01D15]"
     },
     {
       id: 4,
       title: "Safety Tips",
       icon: "fas fa-shield-alt",
       link: "/posts?cat=safety",
-      color: "bg-red-600 text-white",
-      hoverColor: "hover:bg-red-700"
+      color: "bg-[#FFD100] text-gray-800", // Pantone 109 (con texto oscuro para mejor contraste)
+      hoverColor: "hover:bg-[#E5BC00]"
     },
     {
       id: 5,
       title: "Events",
       icon: "fas fa-calendar-alt",
       link: "/posts?cat=events",
-      color: "bg-purple-600 text-white",
-      hoverColor: "hover:bg-purple-700"
+      color: "bg-[#375D9D] text-white", // Pantone 7684 (repetido pero no consecutivo)
+      hoverColor: "hover:bg-[#2A4A80]"
     }
   ];
 
@@ -83,7 +86,7 @@ const SideMenu = () => {
       <div className="mt-12 mb-8">
         <div className="border-2 border-blue-200 rounded-lg p-1 shadow-md hover:shadow-lg transition-all duration-300 bg-white">
           <div className="bg-gradient-to-r from-blue-50 to-white rounded-md">
-            <Search/>
+            <SearchExpanded/>
           </div>
         </div>
       </div>

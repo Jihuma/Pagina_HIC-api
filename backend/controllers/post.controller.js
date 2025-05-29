@@ -52,8 +52,13 @@ export const createPost = async (req, res) => {
     return res.status(404).json("User not found!");
   }
 
-  let slug = req.body.title.replace(/ /g, "-").toLowerCase();
-
+  // let slug = req.body.title.replace(/ /g, "-").toLowerCase();
+  // Modificar esta línea para manejar caracteres especiales
+  let slug = req.body.title
+    .replace(/[^\w\s]/g, '') // Eliminar caracteres especiales
+    .replace(/\s+/g, '-')    // Reemplazar espacios con guiones
+    .toLowerCase();
+  
   let existingPost = await Post.findOne({ slug });
 
   let counter = 2;
@@ -76,6 +81,13 @@ export const deletePost = async (req, res) => {
     return res.status(401).json("Not authenticated!");
   }
 
+  const role = req.auth.sessionClaims?.metadata?.role || "user";
+
+  if (role === "admin") {
+    await Post.findByIdAndDelete(req.params.id);
+    return res.status(200).json("Post has been deleted");
+  }
+
   const user = await User.findOne({ clerkUserId });
 
   const deletedPost = await Post.findOneAndDelete({
@@ -88,6 +100,39 @@ export const deletePost = async (req, res) => {
   }
 
   res.status(200).json("Post has been deleted");
+};
+
+export const featurePost = async (req, res) => {
+  const clerkUserId = req.auth.userId;
+  const postId = req.body.postId;
+
+  if (!clerkUserId) {
+    return res.status(401).json("Not authenticated!");
+  }
+
+  const role = req.auth.sessionClaims?.metadata?.role || "user";
+
+  if (role !== "admin") {
+    return res.status(403).json("You cannot feature posts!");
+  }
+
+  const post = await Post.findById(postId);
+
+  if (!post) {
+    return res.status(404).json("Post not found!");
+  }
+
+  const isFeatured = post.isFeatured;
+
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    {
+      isFeatured: !isFeatured,
+    },
+    { new: true }
+  );
+
+  res.status(200).json(updatedPost);
 };
 
 export const uploadAuth = async (req, res) => {

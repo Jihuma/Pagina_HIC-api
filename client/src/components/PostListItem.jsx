@@ -18,7 +18,7 @@ const PostListItem = ({ post, isLarge = false }) => {
         {post.img && (
           <div className="w-1/3 overflow-hidden p-2">
             <div className="rounded-lg overflow-hidden border-4 border-gray-100 shadow-inner h-full">
-              <Link to={`/${post.slug}`}>
+            <Link to={`/post/${post.slug}`}>
                 <Image 
                   src={post.img} 
                   className="w-full h-full object-cover" 
@@ -46,8 +46,7 @@ const PostListItem = ({ post, isLarge = false }) => {
           </div>
           
           {/* Título */}
-          <Link 
-            to={`/${post.slug}`} 
+          <Link to={`/post/${post.slug}`}
             className="block text-lg font-semibold text-blue-800 hover:text-teal-600 transition-colors mb-2"
           >
             {post.title}
@@ -55,8 +54,7 @@ const PostListItem = ({ post, isLarge = false }) => {
           
           {/* Botón de leer más */}
           <div className="mt-auto">
-            <Link 
-              to={`/${post.slug}`} 
+          <Link to={`/post/${post.slug}`}
               className="inline-flex items-center text-teal-600 hover:text-teal-800 text-sm font-medium"
             >
               Read More <i className="fas fa-arrow-right ml-1 text-xs"></i>
@@ -76,7 +74,7 @@ const PostListItem = ({ post, isLarge = false }) => {
         {post.img && (
           <div className="relative overflow-hidden p-3">
             <div className="rounded-lg overflow-hidden border-4 border-gray-100 shadow-inner h-64">
-              <Link to={`/${post.slug}`}>
+            <Link to={`/post/${post.slug}`}>
                 <Image 
                   src={post.img} 
                   className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
@@ -104,8 +102,7 @@ const PostListItem = ({ post, isLarge = false }) => {
           </div>
           
           {/* Título */}
-          <Link 
-            to={`/${post.slug}`} 
+          <Link to={`/post/${post.slug}`}
             className="block text-2xl font-semibold text-blue-800 hover:text-teal-600 transition-colors mb-3"
           >
             {post.title}
@@ -113,8 +110,7 @@ const PostListItem = ({ post, isLarge = false }) => {
           
           {/* Botón de leer más */}
           <div className="mt-auto pt-3">
-            <Link 
-              to={`/${post.slug}`} 
+          <Link to={`/post/${post.slug}`}
               className="inline-flex items-center text-teal-600 hover:text-teal-800 text-sm font-medium"
             >
               Read More <i className="fas fa-arrow-right ml-1 text-xs"></i>

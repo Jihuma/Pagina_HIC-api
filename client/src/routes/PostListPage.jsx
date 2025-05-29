@@ -134,9 +134,11 @@ const PostListPage = () => {
           </div>
         </div>
         
-        {/* Botón flotante para crear artículos con el nuevo diseño - posicionado a la izquierda */}
+        {/* El botón flotante para crear artículos del lado izquierdo ha sido eliminado */}
+        
+        {/* Botón flotante para crear artículos con el nuevo diseño - posicionado a la derecha */}
         {isSignedIn && (
-          <div className="fixed bottom-6 left-6 z-50 animate-slideUp">
+          <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
             <Link 
               to="/write"
               className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[rgb(20,20,20)] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-blue-600 hover:scale-105 hover:shadow-xl"
@@ -175,7 +177,7 @@ const PostListPage = () => {
           <button 
             onClick={scrollToTop}
             disabled={isScrolling}
-            className={`fixed bottom-6 right-6 z-50 bg-blue-700 hover:bg-blue-800 text-white rounded-lg w-10 h-10 flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 group animate-slideUp ${isScrolling ? 'animate-pulse opacity-70' : ''}`}
+            className={`fixed bottom-6 left-6 z-50 bg-blue-700 hover:bg-blue-800 text-white rounded-lg w-10 h-10 flex items-center justify-center shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 group animate-slideUp ${isScrolling ? 'animate-pulse opacity-70' : ''}`}
             aria-label="Volver arriba"
           >
             <svg 
