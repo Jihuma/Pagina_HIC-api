@@ -13,15 +13,13 @@ import EditPost from "./routes/EditPost.jsx"; // Importar el nuevo componente
 import MainLayout from './layouts/MainLayout.jsx';
 import { ClerkProvider } from '@clerk/clerk-react'
 
-import {
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ToastContainer } from "react-toastify"
 import "react-toastify/dist/ReactToastify.css"
 import ContactFormsPage from "./routes/ContactFormsPage.jsx";
 
-const queryClient = new QueryClient()
+// Importar nuestra configuración centralizada
+import queryClient from './lib/queryClient';
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -71,9 +69,16 @@ const router = createBrowserRouter([
         element: <EditPost />,
       },
       // Redirigir la ruta de formularios de contacto a user-articles
+      // Cambiar esto:
       {
         path: "/admin/contact-forms",
         element: <UserArticlesPage />,
+      },
+      
+      // Por esto:
+      {
+        path: "/admin/contact-forms",
+        element: <ContactFormsPage />,
       },
       // Agregar una ruta para manejar el error específico
       {
@@ -93,7 +98,7 @@ const router = createBrowserRouter([
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-      <QueryClientProvider client={ queryClient }>
+      <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <ToastContainer position='bottom-right'/>
       </QueryClientProvider>

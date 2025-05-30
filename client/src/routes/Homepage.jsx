@@ -98,12 +98,11 @@ const Homepage = () => {
         <div className="absolute top-[-5px] left-0 right-0 h-1 shadow-top-bottom"></div>
         
         <div className="text-center mb-8">
-          <h1 className="text-2xl md:text-3xl font-bold text-blue-800">Latest Blog And News</h1>
-          <p className="text-gray-600 mt-2">Stay informed on important children's health issues</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-blue-800">Últimos blog y noticias</h1>
+          <p className="text-gray-600 mt-2">Manténgase informado sobre temas importantes de salud infantil</p>
         </div>
         <HomePostList />
         
-        {/* Eliminado el efecto de sombra en la parte inferior */}
         {/* Después de mostrar algunos posts, añade el botón */}
         <div className="text-center">
           <ViewAllNewsButton />
@@ -120,7 +119,7 @@ const Homepage = () => {
         <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
           <Link 
             to="/write"
-            className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[rgb(20,20,20)] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-blue-600 hover:scale-105 hover:shadow-xl"
+            className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[#522c45] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-[#64599a] hover:scale-105 hover:shadow-xl"
             aria-label="Crear artículo"
           >
             <svg 

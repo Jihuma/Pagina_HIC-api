@@ -6,12 +6,23 @@ import InfiniteScroll from "react-infinite-scroll-component";
 import { useSearchParams } from "react-router-dom";
 import Image from "./Image";
 
-const fetchPosts = async (pageParam, category) => {
+// Modificar la función fetchPosts para incluir el parámetro de búsqueda
+const fetchPosts = async (pageParam, category, filter, search) => {
   const params = { page: pageParam, limit: 9 };
   
   // Añadir categoría a los parámetros si existe
   if (category) {
     params.cat = category;
+  }
+  
+  // Añadir filtro a los parámetros si existe
+  if (filter) {
+    params.filter = filter;
+  }
+  
+  // Añadir término de búsqueda a los parámetros si existe
+  if (search) {
+    params.search = search;
   }
   
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts`, {
@@ -20,9 +31,10 @@ const fetchPosts = async (pageParam, category) => {
   return res.data;
 };
 
-const FullPostList = ({ onEndReached }) => {
+const FullPostList = ({ onEndReached, selectedFilter }) => {
   const [searchParams] = useSearchParams();
   const category = searchParams.get("cat");
+  const search = searchParams.get("search"); // Obtener el término de búsqueda de la URL
   
   // Estado para controlar si no hay resultados
   const [noResults, setNoResults] = useState(false);
@@ -36,8 +48,8 @@ const FullPostList = ({ onEndReached }) => {
     refetch,
     isFetching,
   } = useInfiniteQuery({
-    queryKey: ['fullPosts', category],
-    queryFn: ({ pageParam = 1 }) => fetchPosts(pageParam, category),
+    queryKey: ['fullPosts', category, selectedFilter, search], // Incluir search en la queryKey
+    queryFn: ({ pageParam = 1 }) => fetchPosts(pageParam, category, selectedFilter, search),
     initialPageParam: 1,
     getNextPageParam: (lastPage, pages) => lastPage.hasMore ? pages.length + 1 : undefined,
     staleTime: 1000 * 60 * 5, // 5 minutos
@@ -46,12 +58,12 @@ const FullPostList = ({ onEndReached }) => {
     retry: 3,
   });
 
-  // Asegurar que los datos se carguen al montar el componente o cuando cambia la categoría
+  // Asegurar que los datos se carguen al montar el componente o cuando cambia la categoría, el filtro o la búsqueda
   useEffect(() => {
     if (!isFetching) {
       refetch();
     }
-  }, [category, refetch, isFetching]);
+  }, [category, selectedFilter, search, refetch, isFetching]);
   
   // Verificar si hay resultados después de cargar
   useEffect(() => {
@@ -83,8 +95,12 @@ const FullPostList = ({ onEndReached }) => {
     return (
       <div className="text-center py-10">
         <i className="fas fa-search text-3xl text-gray-400 mb-3"></i>
-        <p className="text-gray-600">No se encontraron artículos{category ? ` en la categoría "${category}"` : ''}.</p>
-        {category && (
+        <p className="text-gray-600">
+          No se encontraron artículos
+          {category ? ` en la categoría "${category}"` : ''}
+          {search ? ` con el término "${search}"` : ''}.
+        </p>
+        {(category || search) && (
           <button 
             onClick={() => window.location.href = '/posts'} 
             className="mt-4 bg-blue-800 text-white px-4 py-2 rounded-md hover:bg-blue-900 transition-colors"

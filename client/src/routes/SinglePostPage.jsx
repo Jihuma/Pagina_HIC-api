@@ -81,15 +81,11 @@ const SinglePostPage = () => {
       const requiredFields = {
         parentName: "Nombres del Padre/Madre/Tutor",
         parentSurname: "Apellidos del Padre/Madre/Tutor",
-        childName: "Nombre completo del Niño/a",
-        childGender: "Género del Niño/a",
-        childAge: "Número de Expediente",
-        childBirthDate: "Fecha de Nacimiento del Niño/a",
         contactPhone: "Teléfono de Contacto",
         contactEmail: "Correo Electrónico",
         consultationReason: "Motivo de la Consulta"
       };
-
+      
       
       const missingFields = Object.entries(requiredFields)
         .filter(([fieldKey]) => !formData[fieldKey] || formData[fieldKey].trim() === "")
@@ -110,18 +106,11 @@ const SinglePostPage = () => {
          setSubmitError("Por favor ingrese un número de teléfono válido.");
          return;
       }
-    
-      // Validar número de expediente
-      if (!formData.childAge || formData.childAge.trim() === "") {
-        setSubmitError("Por favor ingrese un número de expediente válido.");
-        return;
-      }
-
 
       console.log("Enviando formulario:", formData); // Log para depuración
       // Asegúrate de que el endpoint `/contact-forms` exista en tu backend
       // y esté preparado para recibir estos datos.
-      await axios.post(`${import.meta.env.VITE_API_URL}/contact-forms`, {
+      await axios.post(`${import.meta.env.VITE_API_URL}/api/contact-forms`, {
         ...formData,
         postId: data?._id, // Relacionar con el artículo actual, verificar si data existe
         postTitle: data?.title // Opcional: enviar el título del post para referencia
@@ -150,8 +139,7 @@ const SinglePostPage = () => {
     </div>
   );
   
-  // Es importante verificar 'data' aquí. Si 'isPending' es false y 'error' es null, 'data' debería existir.
-  // Pero si la API devuelve un 200 con cuerpo vacío o una estructura inesperada, 'data' podría ser undefined.
+
   if (!data) return (
     <div className="text-center py-20 text-gray-500">
       <i className="fas fa-search text-3xl mb-3"></i>
@@ -159,8 +147,7 @@ const SinglePostPage = () => {
     </div>
   );
 
-  // Asegurarse de que data.content y data.desc existan antes de sanitizarlos
-  // Asegurarse de que data.content exista antes de sanitizarlo
+
   // Mejorar la sanitización con más debugging
   const sanitizedContent = data?.content ? (() => {
   console.log("Contenido antes de sanitizar:", data.content.substring(0, 200) + "...");
@@ -172,8 +159,6 @@ const SinglePostPage = () => {
   return sanitized;
   })() : "";
   const sanitizedDesc = data.desc ? DOMPurify.sanitize(data.desc).replace(/<[^>]+>/g, "").slice(0, 160) : "Descripción no disponible.";
-  
-  const readingTime = 10; // Esto podría calcularse basado en data.content
   
   const formatDate = (dateString) => {
     if (!dateString) return "Fecha no disponible";
@@ -259,9 +244,6 @@ const SinglePostPage = () => {
               <Link to={`/posts?cat=${data.category}`} className="text-blue-600 hover:underline mx-1">
                 {data.category}
               </Link>
-            </div>
-            <div className="text-sm text-gray-500">
-              Tiempo de lectura estimado: {readingTime} minutos
             </div>
           </div>
 
@@ -476,12 +458,6 @@ const SinglePostPage = () => {
                         // Estado intermedio o inesperado
                         <p className="text-gray-600">Procesando...</p>
                       )}
-                       {/* <button 
-                          onClick={resetFormAndStartOver}
-                          className="mt-6 bg-blue-500 hover:bg-blue-600 text-white py-2 px-6 rounded-md transition duration-300"
-                        >
-                          {submitError ? "Intentar de Nuevo" : "Enviar Otro Formulario"}
-                        </button> */}
                     </div>
                   )}
                 </div>

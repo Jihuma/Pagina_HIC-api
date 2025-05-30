@@ -1,7 +1,7 @@
 import { useAuth, useUser } from "@clerk/clerk-react"
 import 'react-quill-new/dist/quill.snow.css' // Main Quill styles
 import ReactQuill from 'react-quill-new'
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query"
 import axios from "axios"
 import { useEffect, useState, useRef } from "react" // Added useRef
 import { useNavigate } from "react-router-dom"
@@ -28,6 +28,26 @@ const Write = () => {
   const [category, setCategory] = useState('general');
   const confetti = Confetti(); // Inicializamos el confeti
 
+  // Añadir esta consulta para obtener las categorías
+const {
+  data: categoriesData,
+  error: categoriesError,
+  status: categoriesStatus,
+} = useQuery({
+  queryKey: ['categories'],
+  queryFn: async () => {
+    const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+    return res.data;
+  },
+});
+
+// Establecer la categoría por defecto cuando se cargan las categorías
+useEffect(() => {
+  if (categoriesData && categoriesData.length > 0 && !category) {
+    setCategory(categoriesData[0].slug);
+  }
+}, [categoriesData, category]);
+
   // Quill modules configuration
   const modules = {
     toolbar: {
@@ -45,30 +65,22 @@ const Write = () => {
   };
 
   useEffect(() =>{
-    // If an image is uploaded, insert it at the cursor position and center its line
     if (img && img.url) {
       const editor = quillRef.current?.getEditor();
       if (editor) {
-        const range = editor.getSelection(true); // Get current cursor position
-        editor.insertEmbed(range.index, 'image', img.url, 'user'); // Insert the image
+        const range = editor.getSelection(true); 
+        editor.insertEmbed(range.index, 'image', img.url, 'user'); 
 
-        // The image embed itself has a length of 1.
-        // Get the line (blot) containing the newly inserted image.
+     
         const [lineBlot, offsetInLine] = editor.getLine(range.index);
         
         if (lineBlot) {
-          const lineIndex = editor.getIndex(lineBlot); // Get the starting index of this line blot
-          // Format this specific line to be centered.
-          // The length of the format should ideally cover the line, but for 'align'
-          // it applies to the whole block, so length 1 at the line's start is often enough.
-          // However, to be safe, one could use lineBlot.length(), but that might be too broad
-          // if other formats are involved. For 'align', 1 is standard.
+          const lineIndex = editor.getIndex(lineBlot); 
           editor.formatLine(lineIndex, 1, 'align', 'center', 'user');
         }
         
-        editor.setSelection(range.index + 1, 0); // Move cursor after the image
+        editor.setSelection(range.index + 1, 0); 
       } else {
-        // Fallback if editor instance is not immediately available
         setValue(prev => prev + `<p style="text-align:center;"><img src="${img.url}" alt="Imagen insertada"/></p>`);
       }
     }
@@ -123,7 +135,7 @@ const Write = () => {
     );
   };
 
-  // If user data is loaded but user is not signed in, prompt to sign in
+
   if(isLoaded && !isSignedIn){
     return (
       <div className="text-center py-20 text-red-500">
@@ -162,7 +174,7 @@ const Write = () => {
       title,
       desc,
       content: value,
-      cat: category,
+      category: category, // Cambiar 'cat' por 'category'
     };
     
     // Añadir la imagen solo si existe
@@ -278,14 +290,18 @@ const Write = () => {
                       name="category"
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      defaultValue="general" 
                     >
-                      <option value="general">General</option>
-                      <option value="web-design">Diseño Web</option>
-                      <option value="development">Desarrollo</option>
-                      <option value="databases">Bases de Datos</option>
-                      <option value="seo">SEO</option>
-                      <option value="marketing">Marketing</option>
+                      {categoriesStatus === "loading" ? (
+                        <option value="">Cargando categorías...</option>
+                      ) : categoriesStatus === "error" ? (
+                        <option value="general">General</option>
+                      ) : (
+                        categoriesData.map((cat) => (
+                          <option key={cat._id} value={cat.slug}>
+                            {cat.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   

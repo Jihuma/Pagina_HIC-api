@@ -1,5 +1,6 @@
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
+import Category from "../models/category.model.js";
 
 // Obtener todos los posts del usuario autenticado
 export const getUserPosts = async (req, res) => {
@@ -20,10 +21,29 @@ export const getUserPosts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
-    const posts = await Post.find({ user: user._id })
+    
+
+    // Obtener todas las categorías para relacionarlas con los posts
+    const categories = await Category.find();
+    const categoriesMap = {};
+    categories.forEach(category => {
+      categoriesMap[category.name] = category;
+    });
+
+    let posts = await Post.find({ user: user._id })
       .sort({ createdAt: -1 }) // Ordenar por fecha de creación (más reciente primero)
       .limit(limit)
       .skip((page - 1) * limit);
+      
+    // Transformación simple para que la categoría sea compatible con el frontend
+    posts = posts.map(post => {
+      const postObj = post.toObject();
+      // Convertir la categoría de string a un objeto simple
+      postObj.category = {
+        name: postObj.category || "General"
+      };
+      return postObj;
+    });
 
     const totalPosts = await Post.countDocuments({ user: user._id });
     const hasMore = page * limit < totalPosts;
@@ -77,6 +97,8 @@ export const getUserPost = async (req, res) => {
     res.status(500).json({ message: "Error al obtener el post" });
   }
 };
+
+
 
 // Actualizar un post específico del usuario
 export const updateUserPost = async (req, res) => {
@@ -183,11 +205,36 @@ export const getAllUserPosts = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
 
-    const posts = await Post.find({})
+    // Obtener todas las categorías para relacionarlas con los posts
+    const categories = await Category.find();
+    const categoriesMap = {};
+    categories.forEach(category => {
+      categoriesMap[category.name] = category;
+    });
+
+    // Obtener los posts
+    let posts = await Post.find({})
       .populate("user", "username img") // Incluir información del usuario
       .sort({ createdAt: -1 }) // Ordenar por fecha de creación (más reciente primero)
       .limit(limit)
       .skip((page - 1) * limit);
+
+    // Transformar los posts para incluir la información completa de la categoría
+    posts = posts.map(post => {
+      const postObj = post.toObject();
+      if (postObj.category && categoriesMap[postObj.category]) {
+        postObj.category = categoriesMap[postObj.category];
+      } else {
+        // Si la categoría no existe, crear un objeto con valores predeterminados
+        postObj.category = {
+          name: postObj.category || "General",
+          icon: "fas fa-folder",
+          color: "bg-gray-600 text-white",
+          hoverColor: "hover:bg-gray-700"
+        };
+      }
+      return postObj;
+    });
 
     const totalPosts = await Post.countDocuments({});
     const hasMore = page * limit < totalPosts;

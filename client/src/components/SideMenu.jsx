@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from "react-router-dom";
-// Cambia esta línea
-import Search from "./Search";
-// Por esta línea
+import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import SearchExpanded from "./SearchExpanded";
 import { Check } from 'lucide-react';
 
-const SideMenu = () => {
+const SideMenu = ({ onFilterChange }) => {
   // Estado para el tamaño de la ventana
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
   // Estado para el filtro seleccionado
@@ -22,12 +21,20 @@ const SideMenu = () => {
   // Función para manejar el cambio de filtro
   const handleFilterChange = (value) => {
     setSelectedFilter(value);
+    // Comunicar el cambio al componente padre si existe la función
+    if (onFilterChange && typeof onFilterChange === 'function') {
+      onFilterChange(value);
+    }
   };
 
   // Componente PuzzleCard modificado sin las bolitas
-  const PuzzleCard = ({ children, pieceBg, pageBg, className }) => {
+  const PuzzleCard = ({ children, pieceBg, pageBg, className, style, onClick }) => {
     return (
-      <div className={`puzzle-piece relative ${pieceBg} rounded-lg p-4 shadow-md transition-all duration-300 hover:shadow-lg ${className}`}>
+      <div 
+        className={`puzzle-piece relative ${pieceBg} rounded-lg p-4 shadow-md transition-all duration-300 hover:shadow-lg ${className}`}
+        style={style}
+        onClick={onClick}
+      >
         {/* Contenido de la tarjeta */}
         <div className="relative z-10">
           {children}
@@ -36,49 +43,19 @@ const SideMenu = () => {
     );
   };
 
-  // Datos para las categorías
-  const categories = [
-    {
-      id: 1,
-      title: "Child Health",
-      icon: "fas fa-child",
-      link: "/posts?cat=child-health",
-      color: "bg-[#375D9D] text-white", // Pantone 7684
-      hoverColor: "hover:bg-[#2A4A80]"
+  // Añadir esta consulta para obtener las categorías
+  const {
+    data: categoriesData,
+    error: categoriesError,
+    status: categoriesStatus,
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      return res.data;
     },
-    {
-      id: 2,
-      title: "Vaccination",
-      icon: "fas fa-syringe",
-      link: "/posts?cat=vaccination",
-      color: "bg-[#77BC1F] text-white", // Pantone 368
-      hoverColor: "hover:bg-[#65A01A]"
-    },
-    {
-      id: 3,
-      title: "Nutrition",
-      icon: "fas fa-apple-alt",
-      link: "/posts?cat=nutrition",
-      color: "bg-[#E2231A] text-white", // Pantone 485
-      hoverColor: "hover:bg-[#C01D15]"
-    },
-    {
-      id: 4,
-      title: "Safety Tips",
-      icon: "fas fa-shield-alt",
-      link: "/posts?cat=safety",
-      color: "bg-[#FFD100] text-gray-800", // Pantone 109 (con texto oscuro para mejor contraste)
-      hoverColor: "hover:bg-[#E5BC00]"
-    },
-    {
-      id: 5,
-      title: "Events",
-      icon: "fas fa-calendar-alt",
-      link: "/posts?cat=events",
-      color: "bg-[#375D9D] text-white", // Pantone 7684 (repetido pero no consecutivo)
-      hoverColor: "hover:bg-[#2A4A80]"
-    }
-  ];
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
 
   return (
     <div className='px-4 h-max sticky top-8'>
@@ -93,7 +70,7 @@ const SideMenu = () => {
 
       {/* Filtros */}
       <div className="bg-white rounded-md p-5 mb-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-5">Filter</h2>
+        <h2 className="text-lg font-bold text-gray-800 mb-5">Filtros</h2>
         
         <div className="flex flex-col gap-3 text-sm">
           {[
@@ -137,25 +114,41 @@ const SideMenu = () => {
         <h2 className="text-lg font-bold text-gray-800 mb-5">Categorías</h2>
         
         <div className="flex flex-col gap-4">
-          {categories.map((category) => (
-            <Link key={category.id} to={category.link} className="block transform transition-transform hover:-translate-y-1">
-              <PuzzleCard 
-                pieceBg={category.color} 
-                pageBg="bg-white"
-                className={`${category.hoverColor}`}
-              >
-                {/* Icono con animación */}
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center icon-coin-flip">
-                    <i className={`${category.icon} text-sm`}></i>
+          {categoriesStatus === "loading" ? (
+            <div className="text-center py-4">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+            </div>
+          ) : categoriesStatus === "error" ? (
+            <div className="text-center py-4 text-red-500">
+              Error al cargar categorías
+            </div>
+          ) : categoriesData && categoriesData.length > 0 ? (
+            categoriesData.map((category) => (
+              <Link key={category._id} to={`/posts?cat=${category.slug}`} className="block transform transition-transform hover:-translate-y-1">
+                <PuzzleCard 
+                  pieceBg={category.color.startsWith('#') ? '' : category.color || "bg-[#375D9D] text-white"} 
+                  pageBg="bg-white"
+                  className={category.color.startsWith('#') ? '' : category.hoverColor || "hover:bg-[#2A4A80]"}
+                  style={category.color.startsWith('#') ? { 
+                    backgroundColor: category.color, 
+                    color: 'white',
+                    ':hover': { backgroundColor: category.hoverColor?.replace('hover:bg-[', '').replace(']', '') || category.color }
+                  } : {}}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center icon-coin-flip">
+                      <i className={category.icon || "fas fa-folder"}></i>
+                    </div>
+                    <h3 className="text-sm font-medium">{category.name}</h3>
                   </div>
-                  
-                  {/* Título */}
-                  <h3 className="text-sm font-medium">{category.title}</h3>
-                </div>
-              </PuzzleCard>
-            </Link>
-          ))}
+                </PuzzleCard>
+              </Link>
+            ))
+          ) : (
+            <div className="text-center py-4 text-gray-500">
+              No hay categorías disponibles
+            </div>
+          )}
         </div>
       </div>
 

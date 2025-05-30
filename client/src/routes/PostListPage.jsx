@@ -71,16 +71,29 @@ const PostListPage = () => {
   
   // Título dinámico basado en la categoría
   const getPageTitle = () => {
-    if (!category) return "Todas las Noticias y Artículos"
-    
+    const category = searchParams.get("cat");
+    const search = searchParams.get("search");
+    if (search) {
+      return `Resultados para "${search}"`;
+    } else if (category) {
     // Convertir formato de URL a formato legible
     const formattedCategory = category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')
     return `Artículos de ${formattedCategory}`
+  } else {
+    return "Todos los artículos";
+  }
   }
 
   // Función para manejar cuando se llega al final de los artículos
   const handleEndReached = () => {
     setShowFooter(true);
+  };
+  
+  const [selectedFilter, setSelectedFilter] = useState('newest');
+  
+  // Función para manejar el cambio de filtro
+  const handleFilterChange = (filter) => {
+    setSelectedFilter(filter);
   };
 
   return (
@@ -123,25 +136,23 @@ const PostListPage = () => {
             {/* Lista de posts */}
             <div className="md:w-3/4">
               <div className="pt-6" id="post-list-container">
-                <FullPostList onEndReached={handleEndReached} />
+                <FullPostList onEndReached={handleEndReached} selectedFilter={selectedFilter} />
               </div>
             </div>
             
             {/* Barra lateral */}
             <div className={`md:w-1/4 ${open ? "block" : "hidden"} md:block`}>
-              <SideMenu/>
+              <SideMenu onFilterChange={handleFilterChange} />
             </div>
           </div>
         </div>
-        
-        {/* El botón flotante para crear artículos del lado izquierdo ha sido eliminado */}
         
         {/* Botón flotante para crear artículos con el nuevo diseño - posicionado a la derecha */}
         {isSignedIn && (
           <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
             <Link 
               to="/write"
-              className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[rgb(20,20,20)] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-blue-600 hover:scale-105 hover:shadow-xl"
+            className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[#522c45] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-[#64599a] hover:scale-105 hover:shadow-xl"
               aria-label="Crear artículo"
             >
               <svg 

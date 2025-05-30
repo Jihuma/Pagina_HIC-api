@@ -1,33 +1,46 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import axios from 'axios';
+import { useQuery } from '@tanstack/react-query';
+
+// Función para obtener los posts destacados
+const fetchFeaturedPosts = async () => {
+  const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts`, {
+    params: { isFeatured: true, limit: 3 },  // Cambiado de 5 a 3
+  });
+  return res.data;
+};
 
 const FeaturedPosts = () => {
   const [activeSlide, setActiveSlide] = useState(0);
+  
+  // Obtener los posts destacados desde la API
+  const {
+    data,
+    error,
+    status,
+  } = useQuery({
+    queryKey: ['featuredPosts'],
+    queryFn: fetchFeaturedPosts,
+    staleTime: 1000 * 60 * 5, // 5 minutos
+    refetchOnWindowFocus: false,
+  });
 
-  // Datos de ejemplo para el carrusel
-  const slides = [
-    {
-      id: 1,
-      title: "New Pediatric Wing Now Open",
-      description: "Our state-of-the-art pediatric wing is now accepting patients, featuring the latest medical technology and child-friendly environments.",
-      imageUrl: "https://readdy.ai/api/search-image?query=modern%20hospital%20pediatric%20wing%20with%20colorful%20walls%2C%20child-friendly%20environment%2C%20medical%20staff%20caring%20for%20children%2C%20bright%20and%20welcoming%20atmosphere%2C%20natural%20lighting%20through%20large%20windows%2C%20medical%20equipment&width=1200&height=600&seq=1&orientation=landscape",
-    },
-    {
-      id: 2,
-      title: "COVID-19 Vaccination for Children",
-      description: "Learn about the latest guidelines and availability of COVID-19 vaccines for children ages 5 and up.",
-      imageUrl: "https://readdy.ai/api/search-image?query=healthcare%20professional%20administering%20vaccine%20to%20a%20child%20with%20parent%20nearby%2C%20clean%20medical%20environment%2C%20gentle%20and%20caring%20interaction%2C%20soft%20lighting%2C%20medical%20facility%20with%20colorful%20details&width=1200&height=600&seq=2&orientation=landscape",
-    },
-    {
-      id: 3,
-      title: "Summer Safety Tips for Families",
-      description: "Keep your children safe this summer with our comprehensive guide to water safety, sun protection, and outdoor activities.",
-      imageUrl: "https://readdy.ai/api/search-image?query=family%20enjoying%20summer%20outdoors%20safely%2C%20children%20wearing%20sun%20hats%20and%20sunscreen%2C%20parents%20supervising%20water%20activities%2C%20bright%20sunny%20day%2C%20green%20park%20environment%2C%20safe%20play%20equipment&width=1200&height=600&seq=3&orientation=landscape",
-    },
-  ];
+  // Preparar los slides basados en los posts destacados
+  const slides = data?.posts && data.posts.length > 0 
+    ? data.posts.map(post => ({
+        id: post._id,
+        slug: post.slug,
+        title: post.title,
+        description: post.desc || 'Leer más sobre este artículo destacado',
+        imageUrl: post.img || 'https://via.placeholder.com/1200x600?text=Imagen+no+disponible',
+      }))
+    : [];
 
-  // Cambiar automáticamente las diapositivas cada 5 segundos
+  // Cambiar automáticamente las diapositivas cada 5 segundos si hay slides disponibles
   useEffect(() => {
+    if (slides.length === 0) return;
+    
     const interval = setInterval(() => {
       setActiveSlide((prevSlide) => (prevSlide + 1) % slides.length);
     }, 5000);
@@ -42,8 +55,35 @@ const FeaturedPosts = () => {
 
   // Función para avanzar a la siguiente diapositiva al hacer clic en la imagen
   const handleImageClick = () => {
+    if (slides.length === 0) return;
     setActiveSlide((prevSlide) => (prevSlide + 1) % slides.length);
   };
+
+  // Mostrar mensaje de carga o error
+  if (status === 'pending') {
+    return (
+      <div className="relative rounded-lg overflow-hidden shadow-md bg-gray-100 h-[400px] md:h-[500px] flex items-center justify-center">
+        <div className="text-gray-600 text-xl">Cargando posts destacados...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="relative rounded-lg overflow-hidden shadow-md bg-gray-100 h-[400px] md:h-[500px] flex items-center justify-center">
+        <div className="text-red-600 text-xl">Error al cargar los posts destacados</div>
+      </div>
+    );
+  }
+
+  // Si no hay posts destacados, mostrar un mensaje
+  if (slides.length === 0) {
+    return (
+      <div className="relative rounded-lg overflow-hidden shadow-md bg-gray-100 h-[400px] md:h-[500px] flex items-center justify-center">
+        <div className="text-gray-600 text-xl">No hay posts destacados disponibles</div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative rounded-lg overflow-hidden shadow-md">
@@ -72,11 +112,11 @@ const FeaturedPosts = () => {
                 <h2 className="text-2xl md:text-4xl font-bold mb-4">{slide.title}</h2>
                 <p className="text-sm md:text-base mb-6">{slide.description}</p>
                 <Link 
-                  to={`/post/${slide.id}`} 
+                  to={`/post/${slide.slug}`} 
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-md inline-block w-fit"
                   onClick={(e) => e.stopPropagation()} // Evita que el clic en el botón active el cambio de diapositiva
                 >
-                  Read More
+                  Leer Más
                 </Link>
               </div>
             </div>

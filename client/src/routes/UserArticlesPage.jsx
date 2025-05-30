@@ -17,17 +17,20 @@ import Confetti from "../components/Confetti";
 // Modificar la función fetchUserPosts para manejar errores
 const fetchUserPosts = async (pageParam, token) => {
   try {
+    // Añadir un tiempo de espera más largo para dar tiempo a que el servidor responda
     const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/user-posts`, {
       params: { page: pageParam, limit: 10 },
       headers: {
         Authorization: `Bearer ${token}`
-      }
+      },
+      timeout: 10000 // Aumentar el tiempo de espera a 10 segundos
     });
     return res.data;
   } catch (error) {
     console.error("Error en fetchUserPosts:", error);
     // Si el error es 404, podría ser un problema temporal
     if (error.response && error.response.status === 404) {
+      console.log("Intentando recuperarse de error 404...");
       toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
       // Retornar datos vacíos para evitar errores en la UI
       return { posts: [], hasMore: false, totalPosts: 0, page: pageParam };
@@ -37,9 +40,16 @@ const fetchUserPosts = async (pageParam, token) => {
 };
 
 // Función para obtener los formularios de contacto
-const fetchContactForms = async (pageParam, token) => {
+const fetchContactForms = async (pageParam, token, status) => {
+  const params = { page: pageParam, limit: 10 };
+  
+  // Añadir el parámetro de estado solo si no es "all"
+  if (status && status !== "all") {
+    params.status = status;
+  }
+  
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/contact-forms`, {
-    params: { page: pageParam, limit: 10 },
+    params,
     headers: {
       Authorization: `Bearer ${token}`
     }
@@ -54,7 +64,8 @@ const fetchAllUserPosts = async (pageParam, token) => {
       params: { page: pageParam, limit: 10 },
       headers: {
         Authorization: `Bearer ${token}`
-      }
+      },
+      timeout: 10000 // Aumentar el tiempo de espera a 10 segundos
     });
     return res.data;
   } catch (error) {
@@ -62,7 +73,10 @@ const fetchAllUserPosts = async (pageParam, token) => {
     if (error.response && error.response.status === 403) {
       toast.error("No tienes permisos para ver todos los artículos");
     } else if (error.response && error.response.status === 404) {
+      console.log("Intentando recuperarse de error 404...");
       toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
+      // Retornar datos vacíos para evitar errores en la UI
+      return { posts: [], hasMore: false, totalPosts: 0, page: pageParam };
     }
     throw error;
   }
@@ -84,6 +98,12 @@ const UserArticlesPage = () => {
   // Añadir estado para verificar si el usuario es administrador
   const [isAdmin, setIsAdmin] = useState(false);
   
+  // Añadir estos estados para el modal de eliminación de categorías
+  const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [isDeletingCategory, setIsDeletingCategory] = useState(false);
+  const [expandedForm, setExpandedForm] = useState(null);
+  
   // Inicializar el confeti
   const confetti = Confetti();
   
@@ -97,18 +117,35 @@ const UserArticlesPage = () => {
   const [iconOptions] = useState([
     "fas fa-folder", "fas fa-child", "fas fa-syringe", "fas fa-apple-alt", 
     "fas fa-shield-alt", "fas fa-calendar-alt", "fas fa-heartbeat", "fas fa-brain",
-    "fas fa-stethoscope", "fas fa-hospital", "fas fa-pills", "fas fa-book-medical"
+    "fas fa-stethoscope", "fas fa-hospital", "fas fa-pills", "fas fa-book-medical",
+    "fas fa-baby", "fas fa-graduation-cap", "fas fa-tooth", "fas fa-lungs",
+    "fas fa-running", "fas fa-walking", "fas fa-wheelchair", "fas fa-procedures",
+    "fas fa-notes-medical", "fas fa-microscope", "fas fa-dna", "fas fa-allergies",
+    "fas fa-eye", "fas fa-bone", "fas fa-user-md", "fas fa-heart",
+    "fas fa-band-aid", "fas fa-weight", "fas fa-virus"
   ]);
   const [colorOptions] = useState([
-    { bg: "bg-blue-600", hover: "hover:bg-blue-700", text: "Azul" },
-    { bg: "bg-green-600", hover: "hover:bg-green-700", text: "Verde" },
-    { bg: "bg-red-600", hover: "hover:bg-red-700", text: "Rojo" },
-    { bg: "bg-yellow-500", hover: "hover:bg-yellow-600", text: "Amarillo" },
-    { bg: "bg-purple-600", hover: "hover:bg-purple-700", text: "Púrpura" },
-    { bg: "bg-pink-500", hover: "hover:bg-pink-600", text: "Rosa" },
-    { bg: "bg-indigo-600", hover: "hover:bg-indigo-700", text: "Índigo" },
-    { bg: "bg-gray-700", hover: "hover:bg-gray-800", text: "Gris" },
+    { bg: "bg-blue-600 text-white", hover: "hover:bg-blue-700", text: "Azul", hex: "#2563eb" },
+    { bg: "bg-red-600 text-white", hover: "hover:bg-red-700", text: "Rojo", hex: "#dc2626" },
+    { bg: "bg-green-600 text-white", hover: "hover:bg-green-700", text: "Verde", hex: "#16a34a" },
+    { bg: "bg-yellow-500 text-white", hover: "hover:bg-yellow-600", text: "Amarillo", hex: "#eab308" },
+    { bg: "bg-purple-600 text-white", hover: "hover:bg-purple-700", text: "Morado", hex: "#9333ea" },
+    { bg: "bg-pink-500 text-white", hover: "hover:bg-pink-600", text: "Rosa", hex: "#ec4899" },
+    { bg: "bg-indigo-600 text-white", hover: "hover:bg-indigo-700", text: "Índigo", hex: "#4f46e5" },
+    { bg: "bg-gray-700 text-white", hover: "hover:bg-gray-800", text: "Gris", hex: "#374151" },
+    { bg: "bg-orange-500 text-white", hover: "hover:bg-orange-600", text: "Naranja", hex: "#f97316" },
+    { bg: "bg-teal-500 text-white", hover: "hover:bg-teal-600", text: "Turquesa", hex: "#14b8a6" },
+    { bg: "bg-cyan-600 text-white", hover: "hover:bg-cyan-700", text: "Cian", hex: "#0891b2" },
+    { bg: "bg-lime-500 text-white", hover: "hover:bg-lime-600", text: "Lima", hex: "#84cc16" },
+    { bg: "bg-amber-500 text-white", hover: "hover:bg-amber-600", text: "Ámbar", hex: "#f59e0b" },
+    { bg: "bg-emerald-500 text-white", hover: "hover:bg-emerald-600", text: "Esmeralda", hex: "#10b981" },
+    { bg: "bg-violet-600 text-white", hover: "hover:bg-violet-700", text: "Violeta", hex: "#7c3aed" },
+    { bg: "bg-fuchsia-600 text-white", hover: "hover:bg-fuchsia-700", text: "Fucsia", hex: "#c026d3" },
   ]);
+  
+  // Añadir estado para el color personalizado
+  const [customColor, setCustomColor] = useState("#000000");
+  const [useCustomColor, setUseCustomColor] = useState(false);
   
   // Añadir esta consulta para obtener las categorías
   const {
@@ -125,14 +162,41 @@ const UserArticlesPage = () => {
     enabled: activeTab === "categories",
   });
   
+  // Constante para el número máximo de reintentos
+  const MAX_RETRIES = 3;
+
   // Añadir esta mutación para crear categorías
   const createCategoryMutation = useMutation({
     mutationFn: async (categoryData) => {
-      return axios.post(`${import.meta.env.VITE_API_URL}/api/categories`, categoryData, {
-        headers: {
-          Authorization: `Bearer ${token}`
+      let retries = 0;
+      while (retries < MAX_RETRIES) {
+        try {
+          // Verificar si el token sigue siendo válido
+          const currentToken = await getToken();
+          
+          const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/categories`, categoryData, {
+            headers: {
+              Authorization: `Bearer ${currentToken}`
+            }
+          });
+          return response.data;
+        } catch (error) {
+          retries++;
+          if (retries >= MAX_RETRIES) throw error;
+          
+          // Esperar un momento antes de reintentar
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Si es un error de autenticación, intentar renovar el token
+          if (error.response?.status === 401) {
+            try {
+              await getToken({ skipCache: true });
+            } catch (e) {
+              console.error("Error renovando token:", e);
+            }
+          }
         }
-      });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
@@ -145,11 +209,12 @@ const UserArticlesPage = () => {
       });
     },
     onError: (error) => {
+      console.error("Error al crear categoría:", error);
       toast.error(error.response?.data?.message || "Error al crear la categoría");
     }
   });
   
-  // Añadir esta mutación para eliminar categorías
+  // Modificar esta mutación para eliminar categorías
   const deleteCategoryMutation = useMutation({
     mutationFn: async (categoryId) => {
       return axios.delete(`${import.meta.env.VITE_API_URL}/api/categories/${categoryId}`, {
@@ -177,10 +242,25 @@ const UserArticlesPage = () => {
     createCategoryMutation.mutate(newCategory);
   };
   
-  // Añadir esta función para manejar la eliminación de categorías
-  const handleDeleteCategory = (categoryId) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar esta categoría?")) {
-      deleteCategoryMutation.mutate(categoryId);
+  // Modificar esta función para manejar la eliminación de categorías
+  const handleDeleteCategory = (category) => {
+    setCategoryToDelete(category);
+    setShowDeleteCategoryModal(true);
+  };
+  
+  // Añadir esta función para confirmar la eliminación de categorías
+  const confirmDeleteCategory = () => {
+    if (categoryToDelete) {
+      setIsDeletingCategory(true);
+      deleteCategoryMutation.mutate(categoryToDelete._id, {
+        onSuccess: () => {
+          setShowDeleteCategoryModal(false);
+          setIsDeletingCategory(false);
+        },
+        onError: () => {
+          setIsDeletingCategory(false);
+        }
+      });
     }
   };
   
@@ -215,80 +295,138 @@ const UserArticlesPage = () => {
     }
   }, [location, confetti, navigate]);
 
-  // Consulta para obtener los artículos del usuario
-  const {
-    data: articlesData,
-    error: articlesError,
-    fetchNextPage: fetchNextArticlesPage,
-    hasNextPage: hasNextArticlesPage,
-    status: articlesStatus,
-    refetch: refetchArticles,
-    isFetching: isArticlesFetching,
-  } = useInfiniteQuery({
-    queryKey: ['userPosts'],
-    queryFn: async ({ pageParam = 1 }) => {
-      if (!token) return { posts: [], hasMore: false, totalPosts: 0, page: 1 };
-      return fetchUserPosts(pageParam, token);
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
-    enabled: !!token && activeTab === "articles",
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    retry: 3, // Intentar 3 veces si falla
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Espera exponencial
-  });
+  // ... existing code ...
 
-  // Efecto para refrescar los artículos cuando se monta el componente o se cambia a la pestaña de artículos
-  useEffect(() => {
-    if (token && activeTab === "articles") {
-      refetchArticles();
+// 1. Primero definimos todas las consultas
+const {
+  data: articlesData,
+  error: articlesError,
+  fetchNextPage: fetchNextArticlesPage,
+  hasNextPage: hasNextArticlesPage,
+  status: articlesStatus,
+  refetch: refetchArticles,
+  isFetching: isArticlesFetching,
+} = useInfiniteQuery({
+  queryKey: ['userPosts'],
+  queryFn: async ({ pageParam = 1 }) => {
+    if (!token) return { posts: [], hasMore: false, totalPosts: 0, page: 1 };
+    return fetchUserPosts(pageParam, token);
+  },
+  initialPageParam: 1,
+  getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
+  enabled: !!token && activeTab === "articles",
+  staleTime: 1000 * 60 * 2, // Reducir a 2 minutos para refrescar más frecuentemente
+  retry: 3, // Intentar 3 veces si falla
+  retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // Espera exponencial
+});
+
+// 2. Consulta para obtener todos los artículos (solo para administradores)
+const {
+  data: allArticlesData,
+  error: allArticlesError,
+  fetchNextPage: fetchNextAllArticlesPage,
+  hasNextPage: hasNextAllArticlesPage,
+  status: allArticlesStatus,
+  isFetchingNextPage: isAllArticlesFetchingNextPage,
+  refetch: refetchAllArticles,
+} = useInfiniteQuery({
+  queryKey: ['allUserPosts'],
+  queryFn: async ({ pageParam = 1 }) => {
+    if (!token) return { posts: [], hasMore: false, totalPosts: 0, page: 1 };
+    return fetchAllUserPosts(pageParam, token);
+  },
+  initialPageParam: 1,
+  getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
+  enabled: !!token && isAdmin && activeTab === "allArticles",
+  staleTime: 1000 * 60 * 2, 
+  retry: 3,
+  retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+});
+
+// Procesar los datos de todos los artículos
+const allUserPosts = allArticlesData?.pages.flatMap(page => page.posts) || [];
+const totalAllPosts = allArticlesData?.pages[0]?.totalPosts || 0;
+
+// 3. Consulta para formularios
+const {
+  data: formsData,
+  error: formsError,
+  fetchNextPage: fetchNextFormsPage,
+  hasNextPage: hasNextFormsPage,
+  status: formsStatus,
+  isFetchingNextPage: isFormsFetchingNextPage,
+  refetch: refetchForms, // Extraer correctamente la función refetch
+} = useInfiniteQuery({
+  queryKey: ['contactForms', selectedStatus],
+  queryFn: async ({ pageParam = 1 }) => {
+    if (!token) return { forms: [], hasMore: false, totalForms: 0, page: 1 };
+    return fetchContactForms(pageParam, token, selectedStatus);
+  },
+  initialPageParam: 1,
+  getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
+  enabled: !!token && activeTab === "forms",
+  refetchInterval: activeTab === "forms" ? 10000 : false,  // Refrescar cada 10 segundos cuando la pestaña está activa
+  staleTime: 5000,  // Considerar los datos obsoletos después de 5 segundos
+});
+
+// 4. Ahora que todas las funciones refetch están definidas, podemos usarlas en los efectos
+useEffect(() => {
+  if (token && activeTab === "articles") {
+    refetchArticles();
+  }
+}, [token, activeTab, refetchArticles]);
+
+useEffect(() => {
+  if (token && activeTab === "forms") {
+    refetchForms();
+  }
+}, [token, activeTab, refetchForms]);
+
+// 5. Efecto para manejar cambios de visibilidad
+useEffect(() => {
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      console.log("Página visible de nuevo, refrescando datos...");
+      // Refrescar token y datos cuando la página vuelve a estar visible
+      const refreshData = async () => {
+        try {
+          // Intentar renovar el token
+          if (isSignedIn) {
+            const newToken = await getToken({ skipCache: true });
+            setToken(newToken);
+          }
+          
+          // Invalidar todas las consultas relevantes
+          queryClient.invalidateQueries({ queryKey: ['categories'] });
+          queryClient.invalidateQueries({ queryKey: ['userPosts'] });
+          queryClient.invalidateQueries({ queryKey: ['allUserPosts'] });
+          queryClient.invalidateQueries({ queryKey: ['contactForms'] });
+          
+          // Refrescar datos según la pestaña activa
+          if (activeTab === "articles") {
+            refetchArticles();
+          } else if (activeTab === "forms") {
+            refetchForms();
+          } else if (activeTab === "allArticles" && isAdmin) {
+            refetchAllArticles();
+          }
+        } catch (error) {
+          console.error("Error al refrescar datos:", error);
+        }
+      };
+      
+      refreshData();
     }
-  }, [token, activeTab, refetchArticles]);
+  };
 
-  // Consulta para obtener los formularios de contacto
-  const {
-    data: formsData,
-    error: formsError,
-    fetchNextPage: fetchNextFormsPage,
-    hasNextPage: hasNextFormsPage,
-    status: formsStatus,
-    isFetchingNextPage: isFormsFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['contactForms', selectedStatus],
-    queryFn: async ({ pageParam = 1 }) => {
-      if (!token) return { forms: [], hasMore: false, totalForms: 0, page: 1 };
-      return fetchContactForms(pageParam, token);
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
-    enabled: !!token && activeTab === "forms",
-  });
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+  
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+  };
+}, [queryClient, isSignedIn, getToken, activeTab, refetchArticles, refetchForms, refetchAllArticles, isAdmin]);
 
-  // Consulta para obtener todos los artículos (solo para administradores)
-  const {
-    data: allArticlesData,
-    error: allArticlesError,
-    fetchNextPage: fetchNextAllArticlesPage,
-    hasNextPage: hasNextAllArticlesPage,
-    status: allArticlesStatus,
-    isFetchingNextPage: isAllArticlesFetchingNextPage,
-  } = useInfiniteQuery({
-    queryKey: ['allUserPosts'],
-    queryFn: async ({ pageParam = 1 }) => {
-      if (!token) return { posts: [], hasMore: false, totalPosts: 0, page: 1 };
-      return fetchAllUserPosts(pageParam, token);
-    },
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
-    enabled: !!token && isAdmin && activeTab === "allArticles",
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-  });
-
-    // Procesar los datos de todos los artículos
-    const allUserPosts = allArticlesData?.pages.flatMap(page => page.posts) || [];
-    const totalAllPosts = allArticlesData?.pages[0]?.totalPosts || 0;
+// ... existing code ...
 
   // Mutación para eliminar un artículo
   const deleteMutation = useMutation({
@@ -301,7 +439,7 @@ const UserArticlesPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userPosts'] });
-      queryClient.invalidateQueries({ queryKey: ['allUserPosts'] }); // Añadir esta línea
+      queryClient.invalidateQueries({ queryKey: ['allUserPosts'] }); 
       toast.success("Artículo eliminado correctamente");
       setShowDeleteModal(false);
       setIsDeleting(false);
@@ -324,10 +462,13 @@ const UserArticlesPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contactForms'] });
       toast.success("Formulario eliminado correctamente");
+      setShowDeleteFormModal(false);
+      setIsDeletingForm(false);
     },
     onError: (error) => {
       console.error("Error al eliminar formulario:", error);
       toast.error("Error al eliminar el formulario");
+      setIsDeletingForm(false);
     }
   });
 
@@ -366,11 +507,28 @@ const UserArticlesPage = () => {
     }
   };
 
+  // Añadir estos estados para el modal de eliminación de formularios
+  const [showDeleteFormModal, setShowDeleteFormModal] = useState(false);
+  const [formToDelete, setFormToDelete] = useState(null);
+  const [isDeletingForm, setIsDeletingForm] = useState(false);
+
   // Manejar la eliminación de un formulario
-  const handleDeleteForm = (formId) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este formulario?")) {
-      deleteFormMutation.mutate(formId);
+  const handleDeleteForm = (formId, parentName, parentSurname) => {
+    setFormToDelete({ id: formId, name: `${parentName} ${parentSurname}` });
+    setShowDeleteFormModal(true);
+  };
+  
+  // Añadir función para confirmar eliminación
+  const confirmDeleteForm = () => {
+    if (formToDelete) {
+      setIsDeletingForm(true);
+      deleteFormMutation.mutate(formToDelete.id);
     }
+  };
+
+  // Función para manejar la expansión/colapso de los motivos de consulta
+  const toggleFormExpand = (formId) => {
+    setExpandedForm(prev => prev === formId ? null : formId);
   };
 
   // Manejar el cambio de estado de un formulario
@@ -476,19 +634,6 @@ const UserArticlesPage = () => {
                   )}
                 </div>
               </div>
-              
-              {/* Botón para crear nuevo artículo (solo visible en la pestaña de artículos) */}
-              {activeTab === "articles" && (
-                <div className="mt-6">
-                  <Link 
-                    to="/write" 
-                    className="inline-flex items-center bg-blue-800 text-white px-6 py-3 rounded-lg hover:bg-blue-900 transition-colors"
-                  >
-                    <i className="fas fa-plus mr-2"></i>
-                    Crear Nuevo Artículo
-                  </Link>
-                </div>
-              )}
             </div>
 
             {/* Contenido de la pestaña de Artículos */}
@@ -598,9 +743,15 @@ const UserArticlesPage = () => {
                                   <div className="text-sm text-gray-500">{formatDate(post.createdAt)}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    {post.category || "General"}
-                                  </span>
+                                  {post.category ? (
+                                    <span className="text-sm text-gray-700">
+                                      {post.category.name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-sm text-gray-700">
+                                      Sin categoría
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <div className="flex space-x-2">
@@ -750,16 +901,9 @@ const UserArticlesPage = () => {
                                   </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  {post.category ? (
-                                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${post.category.color}`}>
-                                      <i className={`${post.category.icon} mr-1`}></i>
-                                      {post.category.name}
-                                    </span>
-                                  ) : (
-                                    <span className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                                      Sin categoría
-                                    </span>
-                                  )}
+                                  <div className="text-sm text-gray-900">
+                                    {post.category ? post.category.name : "Sin categoría"}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                   <div className="flex space-x-2">
@@ -795,112 +939,268 @@ const UserArticlesPage = () => {
               </>
             )}
 
-            {/* Contenido de la pestaña de Formularios de Contacto */}
-            {activeTab === "forms" && (
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-bold text-gray-800 mb-6">Formularios de Contacto</h2>
-                
-                {/* Filtros de estado */}
-                <div className="mb-6">
-                  <label className="mr-2">Filtrar por estado:</label>
-                  <select 
-                    value={selectedStatus} 
-                    onChange={(e) => setSelectedStatus(e.target.value)}
-                    className="border rounded p-2"
-                  >
-                    <option value="all">Todos</option>
-                    <option value="pending">Pendientes</option>
-                    <option value="reviewed">Revisados</option>
-                    <option value="contacted">Contactados</option>
-                  </select>
-                </div>
+                {/* Contenido de la pestaña de Formularios de Contacto */}
+                {activeTab === "forms" && (
+                  <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Formularios de Contacto</h2>
+                    
+                    {/* Filtros de estado */}
+                    <div className="mb-6">
+                      <label className="mr-2">Filtrar por estado:</label>
+                      <select 
+                        value={selectedStatus} 
+                        onChange={(e) => setSelectedStatus(e.target.value)}
+                        className="border rounded p-2"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="pending">Pendientes</option>
+                        <option value="reviewed">Revisados</option>
+                        <option value="contacted">Contactados</option>
+                      </select>
+                    </div>
 
-                {formsStatus === "loading" ? (
-                  <div className="flex justify-center py-10">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                  </div>
-                ) : formsStatus === "error" ? (
-                  <div className="text-center py-10 text-red-500">
-                    <p>Error al cargar los formularios: {formsError.message}</p>
-                  </div>
-                ) : allForms.length === 0 ? (
-                  <div className="text-center py-10 text-gray-500">
-                    <p>No hay formularios de contacto disponibles.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full bg-white border border-gray-200 rounded-lg overflow-hidden">
-                      <thead className="bg-gray-100">
-                        <tr>
-                          <th className="py-3 px-4 text-left">Fecha</th>
-                          <th className="py-3 px-4 text-left">Padre/Madre</th>
-                          <th className="py-3 px-4 text-left">Niño/a</th>
-                          <th className="py-3 px-4 text-left">Contacto</th>
-                          <th className="py-3 px-4 text-left">Motivo</th>
-                          <th className="py-3 px-4 text-left">Estado</th>
-                          <th className="py-3 px-4 text-left">Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    {formsStatus === "loading" ? (
+                      <div className="flex justify-center py-10">
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                      </div>
+                    ) : formsStatus === "error" ? (
+                      <div className="text-center py-10 text-red-500">
+                        <p>Error al cargar los formularios: {formsError.message}</p>
+                      </div>
+                    ) : allForms.length === 0 ? (
+                      <div className="text-center py-10 text-gray-500">
+                        <p>No hay formularios de contacto disponibles.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
                         {allForms.map((form) => (
-                          <tr key={form._id} className="border-t border-gray-200 hover:bg-gray-50">
-                            <td className="py-3 px-4">{formatDate(form.createdAt)}</td>
-                            <td className="py-3 px-4">{form.parentName} {form.parentSurname}</td>
-                            <td className="py-3 px-4">
-                              {form.childName}<br />
-                              <span className="text-sm text-gray-500">
-                                {form.childAge} años - {form.childGender}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4">
-                              {form.contactEmail}<br />
-                              <span className="text-sm text-gray-500">{form.contactPhone}</span>
-                            </td>
-                            <td className="py-3 px-4">
-                              <div className="max-w-xs truncate">{form.consultationReason}</div>
-                            </td>
-                            <td className="py-3 px-4">
-                              <select 
-                                value={form.status} 
-                                onChange={(e) => handleStatusChange(form._id, e.target.value)}
-                                className="border rounded p-1 text-sm w-full"
-                              >
-                                <option value="pending">Pendiente</option>
-                                <option value="reviewed">Revisado</option>
-                                <option value="contacted">Contactado</option>
-                              </select>
-                            </td>
-                            <td className="py-3 px-4">
-                              <button 
-                                onClick={() => handleDeleteForm(form._id)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                Eliminar
-                              </button>
-                            </td>
-                          </tr>
+                          <div key={form._id} className="border border-gray-200 rounded-lg overflow-hidden">
+                            {/* Cabecera del formulario (siempre visible) */}
+                            <div 
+                              onClick={() => toggleFormExpand(form._id)}
+                              className={`flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 ${expandedForm === form._id ? 'bg-blue-50' : 'bg-white'}`}
+                            >
+                              <div className="flex items-center space-x-4">
+                                <div className="flex-shrink-0">
+                                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${form.status === 'pending' ? 'bg-yellow-100 text-yellow-600' : form.status === 'reviewed' ? 'bg-blue-100 text-blue-600' : 'bg-green-100 text-green-600'}`}>
+                                    <i className={`fas ${form.status === 'pending' ? 'fa-clock' : form.status === 'reviewed' ? 'fa-eye' : 'fa-check'}`}></i>
+                                  </div>
+                                </div>
+                                <div>
+                                  <h3 className="text-lg font-medium text-gray-900">{form.parentName} {form.parentSurname}</h3>
+                                  <p className="text-sm text-gray-500">{formatDate(form.createdAt)}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${form.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : form.status === 'reviewed' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                                  {form.status === 'pending' ? 'Pendiente' : form.status === 'reviewed' ? 'Revisado' : 'Contactado'}
+                                </span>
+                                <i className={`fas ${expandedForm === form._id ? 'fa-chevron-up' : 'fa-chevron-down'} text-gray-400`}></i>
+                              </div>
+                            </div>
+                            
+                            {/* Contenido detallado del formulario (visible solo cuando está expandido) */}
+                            {expandedForm === form._id && (
+                              <div className="p-6 bg-white border-t border-gray-200">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  {/* Información del niño/a */}
+                                  <div className="bg-blue-50 p-4 rounded-lg">
+                                    <h4 className="text-md font-semibold text-gray-800 mb-3">Información del Niño/a</h4>
+                                    <div className="space-y-2">
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Nombre:</span>
+                                        <span>{form.childName}</span>
+                                      </div>
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Edad:</span>
+                                        <span>{form.childAge} años</span>
+                                      </div>
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Género:</span>
+                                        <span>{form.childGender}</span>
+                                      </div>
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Expediente:</span>
+                                        <span>{form.fileNumber || 'No especificado'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Información de contacto */}
+                                  <div className="bg-purple-50 p-4 rounded-lg">
+                                    <h4 className="text-md font-semibold text-gray-800 mb-3">Información de Contacto</h4>
+                                    <div className="space-y-2">
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Padre/Madre:</span>
+                                        <span>{form.parentName} {form.parentSurname}</span>
+                                      </div>
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Teléfono:</span>
+                                        <span>{form.contactPhone}</span>
+                                      </div>
+                                      <div className="flex">
+                                        <span className="font-medium w-32">Email:</span>
+                                        <span>{form.contactEmail}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Motivo de la consulta */}
+                                <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                                  <h4 className="text-md font-semibold text-gray-800 mb-3">Motivo de la Consulta</h4>
+                                  <p className="text-gray-700">{form.consultationReason}</p>
+                                </div>
+                                
+                                {/* Acciones */}
+                                <div className="mt-6 flex justify-between items-center">
+                                  <div>
+                                    <label className="mr-2 text-sm font-medium">Cambiar estado:</label>
+                                    <select 
+                                      value={form.status} 
+                                      onChange={(e) => handleStatusChange(form._id, e.target.value)}
+                                      className="border rounded p-2 text-sm"
+                                    >
+                                      <option value="pending">Pendiente</option>
+                                      <option value="reviewed">Revisado</option>
+                                      <option value="contacted">Contactado</option>
+                                    </select>
+                                  </div>
+                                  <button 
+                                    onClick={() => handleDeleteForm(form._id, form.parentName, form.parentSurname)}
+                                    className="bg-red-50 text-red-600 px-4 py-2 rounded-md hover:bg-red-100 transition-colors"
+                                  >
+                                    <i className="fas fa-trash-alt mr-2"></i>
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-
-                    {hasNextFormsPage && (
-                      <div className="text-center mt-6">
-                        <button
-                          onClick={() => fetchNextFormsPage()}
-                          disabled={isFormsFetchingNextPage}
-                          className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition duration-300"
-                        >
-                          {isFormsFetchingNextPage ? "Cargando más..." : "Cargar más"}
-                        </button>
+                        
+                        {hasNextFormsPage && (
+                          <div className="text-center mt-6">
+                            <button
+                              onClick={() => fetchNextFormsPage()}
+                              disabled={isFormsFetchingNextPage}
+                              className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded transition duration-300"
+                            >
+                              {isFormsFetchingNextPage ? "Cargando más..." : "Cargar más"}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
                 )}
-              </div>
-            )}
 
-                        {/* Contenido de la pestaña de Categorías */}
-                        {activeTab === "categories" && (
+                {/* Modal de confirmación de eliminación de formulario */}
+        {showDeleteFormModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar eliminación</h3>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que deseas eliminar el formulario de "{formToDelete?.name}"? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteFormModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isDeletingForm}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteForm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  disabled={isDeletingForm}
+                >
+                  {isDeletingForm ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Modal de confirmación de eliminación de formulario */}
+        {showDeleteFormModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar eliminación</h3>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que deseas eliminar el formulario de "{formToDelete?.name}"? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteFormModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isDeletingForm}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteForm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  disabled={isDeletingForm}
+                >
+                  {isDeletingForm ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar eliminación</h3>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que deseas eliminar el formulario de "{formToDelete?.name}"? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+            {/* Contenido de la pestaña de Categorías */}
+            {activeTab === "categories" && (
               <div className="bg-white p-6 rounded-lg shadow-sm">
                 <h2 className="text-xl font-bold text-gray-800 mb-6">Gestión de Categorías</h2>
                 
@@ -922,15 +1222,16 @@ const UserArticlesPage = () => {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Icono</label>
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-2 mb-2 max-h-60 overflow-y-auto p-2">
                         {iconOptions.map((icon, index) => (
                           <button
                             key={index}
                             type="button"
                             onClick={() => setNewCategory({...newCategory, icon})}
-                            className={`p-3 rounded-md flex items-center justify-center ${newCategory.icon === icon ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50 hover:bg-gray-100'}`}
+                            className={`p-3 rounded-md flex flex-col items-center justify-center ${newCategory.icon === icon ? 'bg-blue-100 border-2 border-blue-500' : 'bg-gray-50 hover:bg-gray-100'}`}
                           >
-                            <i className={icon}></i>
+                            <i className={`${icon} text-xl mb-1`}></i>
+                            <span className="text-xs text-gray-600">{icon.replace('fas fa-', '')}</span>
                           </button>
                         ))}
                       </div>
@@ -938,18 +1239,64 @@ const UserArticlesPage = () => {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Color</label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {colorOptions.map((color, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => setNewCategory({...newCategory, color: color.bg, hoverColor: color.hover})}
-                            className={`p-3 rounded-md flex items-center justify-center ${color.bg} text-white ${newCategory.color === color.bg ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
-                          >
-                            {color.text}
-                          </button>
-                        ))}
+                      
+                      {/* Pestañas de navegación */}
+                      <div className="flex border-b border-gray-200 mb-4">
+                        <button
+                          type="button"
+                          onClick={() => setUseCustomColor(false)}
+                          className={`py-2 px-4 font-medium text-sm rounded-t-md ${!useCustomColor ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Colores predeterminados
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUseCustomColor(true)}
+                          className={`py-2 px-4 font-medium text-sm rounded-t-md ${useCustomColor ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          Color personalizado
+                        </button>
                       </div>
+                      
+                      {/* Contenido de las pestañas */}
+                      {!useCustomColor ? (
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                          {colorOptions.map((color, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                setNewCategory({...newCategory, color: color.bg, hoverColor: color.hover});
+                              }}
+                              className={`p-3 rounded-md flex items-center justify-center ${color.bg} text-white ${newCategory.color === color.bg ? 'ring-2 ring-offset-2 ring-blue-500' : ''}`}
+                            >
+                              {color.text}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-3 mb-4">
+                          <input 
+                            type="color" 
+                            value={customColor}
+                            onChange={(e) => {
+                              setCustomColor(e.target.value);
+                              // Actualizar la categoría con el color personalizado
+                              setNewCategory({
+                                ...newCategory, 
+                                color: e.target.value, // Guardar solo el valor hexadecimal
+                                hoverColor: `hover:bg-[${e.target.value}]`
+                              });
+                            }}
+                            className="h-10 w-10 rounded cursor-pointer"
+                          />
+                          <div 
+                            className="h-8 w-8 rounded-full ml-2" 
+                            style={{ backgroundColor: customColor }}
+                          ></div>
+                          <span className="text-sm text-gray-700">{customColor}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -1006,17 +1353,26 @@ const UserArticlesPage = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="text-sm font-medium text-gray-900">{category.name}</div>
                                 </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-left">
+                  <i className={`${category.icon} text-2xl text-black block mx-auto`}></i>
+                </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <i className={`${category.icon} text-lg`}></i>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${category.color}`}>
-                                    Ejemplo
-                                  </span>
+                                  {category.color.startsWith('#') ? (
+                                    <span 
+                                      className="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full text-white"
+                                      style={{ backgroundColor: category.color }}
+                                    >
+                                      Ejemplo
+                                    </span>
+                                  ) : (
+                                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${category.color}`}>
+                                      Ejemplo
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <button 
-                                    onClick={() => handleDeleteCategory(category._id)}
+                                    onClick={() => handleDeleteCategory(category)}
                                     className="text-red-600 hover:text-red-900"
                                   >
                                     Eliminar
@@ -1064,6 +1420,41 @@ const UserArticlesPage = () => {
                   disabled={isDeleting}
                 >
                   {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación de eliminación de categorías */}
+        {showDeleteCategoryModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar eliminación</h3>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que deseas eliminar la categoría "{categoryToDelete?.name}"? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteCategoryModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isDeletingCategory}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteCategory}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  disabled={isDeletingCategory}
+                >
+                  {isDeletingCategory ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
                       Eliminando...

@@ -20,14 +20,20 @@ export const getAllContactForms = async (req, res) => {
     // Obtener los formularios con paginación
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
+    
+    // Crear el filtro de búsqueda basado en el estado
+    const filter = {};
+    if (req.query.status) {
+      filter.status = req.query.status;
+    }
 
-    const forms = await ContactForm.find()
+    const forms = await ContactForm.find(filter)
       .sort({ createdAt: -1 }) // Ordenar por fecha de creación (más reciente primero)
       .limit(limit)
       .skip((page - 1) * limit)
       .populate("relatedPost", "title slug");
 
-    const total = await ContactForm.countDocuments();
+    const total = await ContactForm.countDocuments(filter);
 
     res.status(200).json({
       forms,
@@ -59,8 +65,7 @@ export const createContactForm = async (req, res) => {
     } = req.body;
 
     // Validar campos requeridos
-    if (!parentName || !parentSurname || !childName || !childGender || !childAge || 
-        !childBirthDate || !contactPhone || !contactEmail || !consultationReason) {
+    if (!parentName || !parentSurname || !contactPhone || !contactEmail || !consultationReason) {
       return res.status(400).json({ message: "Todos los campos son requeridos" });
     }
 

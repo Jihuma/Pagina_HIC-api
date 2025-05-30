@@ -12,19 +12,19 @@ const contactFormSchema = new Schema(
     },
     childName: {
       type: String,
-      required: true,
+      required: false,
     },
     childGender: {
       type: String,
-      required: true,
+      required: false,
     },
     childAge: {
       type: String,
-      required: true,
+      required: false,
     },
     childBirthDate: {
       type: String,
-      required: true,
+      required: false,
     },
     contactPhone: {
       type: String,

@@ -24,6 +24,10 @@ const ContactFormsPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState("all");
+  // Añadir estados para el modal de confirmación
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [formToDelete, setFormToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Obtener los formularios de contacto
   const {
@@ -56,10 +60,14 @@ const ContactFormsPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contactForms'] });
       toast.success("Formulario eliminado correctamente");
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     },
     onError: (error) => {
       console.error("Error al eliminar formulario:", error);
       toast.error("Error al eliminar el formulario");
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
   });
 
@@ -87,9 +95,16 @@ const ContactFormsPage = () => {
   });
 
   // Manejar la eliminación de un formulario
-  const handleDelete = (formId) => {
-    if (window.confirm("¿Estás seguro de que deseas eliminar este formulario?")) {
-      deleteMutation.mutate(formId);
+  const handleDelete = (formId, parentName, parentSurname) => {
+    setFormToDelete({ id: formId, name: `${parentName} ${parentSurname}` });
+    setShowDeleteModal(true);
+  };
+
+  // Confirmar la eliminación del formulario
+  const confirmDelete = () => {
+    if (formToDelete) {
+      setIsDeleting(true);
+      deleteMutation.mutate(formToDelete.id);
     }
   };
 
@@ -196,7 +211,7 @@ const ContactFormsPage = () => {
                         </td>
                         <td className="py-3 px-4">
                           <button 
-                            onClick={() => handleDelete(form._id)}
+                            onClick={() => handleDelete(form._id, form.parentName, form.parentSurname)}
                             className="text-red-500 hover:text-red-700"
                           >
                             Eliminar
@@ -222,6 +237,41 @@ const ContactFormsPage = () => {
             </div>
           )}
         </div>
+
+        {/* Modal de confirmación de eliminación de formulario */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Confirmar eliminación</h3>
+              <p className="text-gray-600 mb-6">
+                ¿Estás seguro de que deseas eliminar el formulario de "{formToDelete?.name}"? Esta acción no se puede deshacer.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+                  disabled={isDeleting}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center"
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white mr-2"></div>
+                      Eliminando...
+                    </>
+                  ) : (
+                    "Eliminar"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="-mx-4 md:-mx-8 lg:-mx-16 xl:-mx-32 2xl:-mx-64 mt-auto">
           <Footer />

@@ -27,6 +27,19 @@ const EditPost = () => {
   const navigate = useNavigate();
   const { getToken } = useAuth();
   const location = useLocation();
+
+  // Añadir esta consulta para obtener las categorías
+  const {
+    data: categoriesData,
+    error: categoriesError,
+    status: categoriesStatus,
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      return res.data;
+    },
+  });
   
   // Determinar si estamos en modo administrador
   const isAdminMode = location.pathname.includes('/edit-admin/');
@@ -185,8 +198,8 @@ const EditPost = () => {
     },
     onSuccess: () => {
       toast.success("¡Artículo actualizado correctamente!");
-      // Redirigir a la página correcta según el modo
-      navigate(isAdminMode ? '/user-articles' : '/my-articles');
+      // Siempre redirigir a /user-articles
+      navigate('/user-articles');
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Error al actualizar el artículo. Inténtalo de nuevo.");
@@ -347,12 +360,17 @@ const EditPost = () => {
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
                     >
-                      <option value="general">General</option>
-                      <option value="web-design">Diseño Web</option>
-                      <option value="development">Desarrollo</option>
-                      <option value="databases">Bases de Datos</option>
-                      <option value="seo">SEO</option>
-                      <option value="marketing">Marketing</option>
+                      {categoriesStatus === "loading" ? (
+                        <option value="">Cargando categorías...</option>
+                      ) : categoriesStatus === "error" ? (
+                        <option value="general">General</option>
+                      ) : (
+                        categoriesData.map((cat) => (
+                          <option key={cat._id} value={cat.slug}>
+                            {cat.name}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                   

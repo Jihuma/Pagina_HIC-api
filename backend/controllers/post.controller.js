@@ -22,13 +22,59 @@ const getImageKitInstance = () => {
 export const getPosts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 2;
+  const category = req.query.cat;
+  const filter = req.query.filter || 'newest'; // Valor por defecto: newest
+  const search = req.query.search; // Parámetro para búsqueda
+  const isFeatured = req.query.isFeatured === 'true'; // Nuevo parámetro para posts destacados
 
-  const posts = await Post.find()
+  // Crear un objeto de filtro que se usará en la consulta
+  const queryFilter = {};
+  
+  // Si se proporciona una categoría, añadirla al filtro
+  if (category) {
+    queryFilter.category = category;
+  }
+
+  // Si se solicitan posts destacados, añadir el filtro
+  if (req.query.isFeatured === 'true') {
+    queryFilter.isFeatured = true;
+  }
+
+  // Si se proporciona un término de búsqueda, añadir filtro por título
+  if (search) {
+    // Usar expresión regular para buscar coincidencias parciales, insensible a mayúsculas/minúsculas
+    queryFilter.title = { $regex: search, $options: 'i' };
+  }
+
+  // Configurar el orden según el filtro seleccionado
+  let sortOption = {};
+  switch (filter) {
+    case 'newest':
+      sortOption = { createdAt: -1 }; // Más recientes primero
+      break;
+    case 'oldest':
+      sortOption = { createdAt: 1 }; // Más antiguos primero
+      break;
+    case 'popular':
+      sortOption = { visit: -1 }; // Más visitas primero
+      break;
+    case 'trending':
+      // Para trending, podríamos combinar visitas recientes
+      // Esta es una implementación simple, podría mejorarse
+      sortOption = { visit: -1, createdAt: -1 };
+      break;
+    default:
+      sortOption = { createdAt: -1 }; // Por defecto, más recientes primero
+  }
+
+  const posts = await Post.find(queryFilter)
     .populate("user", "username")
+    .sort(sortOption)
     .limit(limit)
     .skip((page - 1) * limit);
 
-  const totalPosts = await Post.countDocuments();
+  // Contar solo los posts que coinciden con el filtro
+  const totalPosts = await Post.countDocuments(queryFilter);
   const hasMore = page * limit < totalPosts;
 
   res.status(200).json({ posts, hasMore });
