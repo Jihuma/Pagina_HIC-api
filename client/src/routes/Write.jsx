@@ -10,6 +10,7 @@ import Upload from "../components/Upload"
 import { Helmet, HelmetProvider } from "react-helmet-async"
 import Footer from "../components/Footer"
 import Picker from 'emoji-picker-react'; // Import the emoji picker
+import Confetti from "../components/Confetti" // Importamos el componente de confeti
 
 
 const Write = () => {
@@ -21,7 +22,11 @@ const Write = () => {
   const [video, setVideo] = useState('');
   const [progress, setProgress] = useState(0);
   const quillRef = useRef(null); // Ref for ReactQuill instance
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false); // State to toggle emoji picker
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false); 
+  const [title, setTitle] = useState('');
+  const [desc, setDesc] = useState('');
+  const [category, setCategory] = useState('general');
+  const confetti = Confetti(); // Inicializamos el confeti
 
   // Quill modules configuration
   const modules = {
@@ -29,9 +34,11 @@ const Write = () => {
       container: [
         [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
         ['bold', 'italic', 'underline', 'strike', 'blockquote'],
+        // 👇 Aquí se agregan las opciones de color y fondo de color
+        [{ 'color': [] }, { 'background': [] }],
         [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-        [{ 'align': [] }], // Added text alignment options
-        ['link', 'image', 'video'],
+        [{ 'align': [] }],
+        ['link', 'video'],
         ['clean']
       ],
     },
@@ -99,8 +106,8 @@ const Write = () => {
       })
     },
     onSuccess:(res)=>{
-      toast.success("Post has been created!")
-      navigate(`/${res.data.slug}`)
+      // toast.success("Post has been created!")
+      navigate(`/post/${res.data.slug}`)
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Failed to create post. Please try again.");
@@ -126,18 +133,53 @@ const Write = () => {
     );
   };
 
-  // Handle form submission
-  const handleSubmit = e=>{
-    e.preventDefault()
-    const formData = new FormData(e.target)
-    const data = {
-      img: cover.filePath || "",
-      title: formData.get("title"),
-      category: formData.get("category"),
-      desc :formData.get("desc"),
+  // Función para manejar el envío del formulario
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Capturar la posición del clic ahora, antes de las operaciones asíncronas
+    const clickPosition = { x: e.clientX, y: e.clientY };
+    
+    // Validaciones
+    if (!title.trim()) {
+      toast.error("Por favor, añade un título");
+      return;
+    }
+    
+    if (!value.trim() || value === '<p><br></p>') {
+      toast.error("Por favor, escribe el contenido del artículo");
+      return;
+    }
+    
+    // Eliminar esta validación para hacer la imagen de portada opcional
+    // if (!cover) {
+    //   toast.error("Por favor, sube una imagen de portada");
+    //   return;
+    // }
+    
+    // Crear el post
+    const newPost = {
+      title,
+      desc,
       content: value,
+      cat: category,
     };
-    mutation.mutate(data);
+    
+    // Añadir la imagen solo si existe
+    if (cover && cover.url) {
+      newPost.img = cover.url;
+    }
+    
+    try {
+      await mutation.mutateAsync(newPost);
+      // Eliminar la activación del confeti aquí
+      // confetti.fire();
+      toast.success("¡Artículo publicado con éxito!");
+      // Pasar un parámetro de estado para indicar que se debe mostrar el confeti
+      navigate("/user-articles", { state: { showConfetti: true } });
+    } catch (err) {
+      console.error("Error al publicar:", err);
+    }
   };
 
   // Function to handle emoji selection
@@ -154,12 +196,13 @@ const Write = () => {
 
   return (
     <HelmetProvider>
-      <div className="flex flex-col min-h-screen">
+      <div className="min-h-screen flex flex-col">
+        {confetti.component /* Renderizamos el componente de confeti */}
         <Helmet>
-          <title>Crear Nuevo Artículo | Blog</title>
-          <meta name="description" content="Crea un nuevo artículo para el blog" />
+          <title>Crear Nuevo Artículo | Hospital Infantil de Las Californias</title>
+          <meta name="description" content="Crea un nuevo artículo para el blog del Hospital Infantil de Las Californias" />
         </Helmet>
-
+        
         {/* Main content area with background color */}
         <div className="relative flex-grow -mx-4 md:-mx-8 lg:-mx-16 xl:-mx-32 2xl:-mx-64 px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-8 bg-[#eff6ff]">
           {/* Top shadow effect */}
@@ -220,6 +263,8 @@ const Write = () => {
                       type="text" 
                       placeholder="El título de tu increíble historia"
                       name="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
                       required
                     />
                   </div>
@@ -231,6 +276,8 @@ const Write = () => {
                       id="category"
                       className="w-full bg-gray-50 border border-gray-300 rounded p-3 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500" 
                       name="category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
                       defaultValue="general" 
                     >
                       <option value="general">General</option>
@@ -251,6 +298,8 @@ const Write = () => {
                       name="desc" 
                       placeholder="Una breve descripción de tu artículo"
                       rows="3"
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
                       required
                     />
                   </div>
@@ -272,14 +321,14 @@ const Write = () => {
                         </button>
                       </Upload>
                       
-                      <Upload type="video" setProgress={setProgress} setData={setVideo}>
+                      {/* <Upload type="video" setProgress={setProgress} setData={setVideo}>
                         <button type="button" className="p-2 shadow-md rounded-xl text-sm text-gray-500 bg-gray-50 hover:bg-gray-100 transition duration-300 flex items-center">
                           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
                           Insertar Video
                         </button>
-                      </Upload>
+                      </Upload> */}
 
                       {/* Emoji Button */}
                       <button 
@@ -379,4 +428,4 @@ const Write = () => {
   )
 }
 
-export default Write
+export default Write;

@@ -135,7 +135,7 @@ const FullPostList = ({ onEndReached }) => {
                 {post.img && (
                   <div className="md:w-1/4 p-3">
                     <div className="overflow-hidden rounded-lg border-4 border-gray-100 shadow-inner h-48 md:h-full">
-                      <Link to={`/${post.slug}`}>
+                    <Link to={`/post/${post.slug}`}>
                         <Image 
                           src={post.img} 
                           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105" 
@@ -166,8 +166,7 @@ const FullPostList = ({ onEndReached }) => {
                     </div>
                     
                     {/* Título */}
-                    <Link 
-                      to={`/${post.slug}`} 
+                    <Link to={`/post/${post.slug}`}
                       className="block text-xl font-semibold text-blue-800 hover:text-blue-600 transition-colors mb-3"
                     >
                       {post.title}
@@ -181,8 +180,7 @@ const FullPostList = ({ onEndReached }) => {
                   
                   {/* Botón de leer más */}
                   <div>
-                    <Link 
-                      to={`/${post.slug}`} 
+                  <Link to={`/post/${post.slug}`}
                       className="inline-flex items-center text-teal-600 hover:text-teal-800 font-medium"
                     >
                       Read More <i className="fas fa-arrow-right ml-1 text-xs"></i>

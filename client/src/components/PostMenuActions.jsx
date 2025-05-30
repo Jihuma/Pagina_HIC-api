@@ -3,12 +3,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useState, useEffect } from "react";
 
 const PostMenuActions = ({post}) => {
     const { user } = useUser();
     const { getToken } = useAuth();
     const navigate = useNavigate();
-
+    // Añadir esta línea para definir isAdmin
+    const [isAdmin, setIsAdmin] = useState(false);
+    
+    // Añadir este useEffect para establecer isAdmin basado en el rol del usuario
+    useEffect(() => {
+        if (user) {
+            setIsAdmin(user.publicMetadata.role === "admin");
+        }
+    }, [user]);
+    
     const { isPending, error, data:savedPosts } = useQuery({
         queryKey: ["savedPosts"],
         queryFn: async () => {
@@ -37,7 +47,7 @@ const PostMenuActions = ({post}) => {
             navigate("/");
         },
         onError:(error)=>{
-            toast.error(error.response.data);
+            toast.error(error.response?.data || "Error deleting post");
         },
       });
 
@@ -62,8 +72,35 @@ const PostMenuActions = ({post}) => {
         },
       });
 
+      const featureMutation = useMutation({
+        mutationFn: async () => {
+          const token = await getToken();
+          return axios.patch(
+            `${import.meta.env.VITE_API_URL}/posts/feature`,
+            {
+              postId: post._id,
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+        },
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["post", post.slug] });
+        },
+        onError: (error) => {
+          toast.error(error.response.data);
+        },
+      });
+
       const handleDelete = () =>{
         deleteMutation.mutate();
+      };
+
+      const handleFeature = () => {
+        featureMutation.mutate();
       };
 
       const handleSave = () =>{
@@ -106,8 +143,40 @@ const PostMenuActions = ({post}) => {
             </svg>
             <span>Save this Post</span>
             {saveMutation.isPending && <span className="text-xs">(In progress)</span>}
-        </div>)}
-        {user && (post.user.username === user.username) && (
+        </div>
+         )}{isAdmin && (
+            <div
+              className="flex items-center gap-2 py-2 text-sm cursor-pointer"
+              onClick={handleFeature}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 48 48"
+                width="20px"
+                height="20px"
+              >
+                <path
+                  d="M24 2L29.39 16.26L44 18.18L33 29.24L35.82 44L24 37L12.18 44L15 29.24L4 18.18L18.61 16.26L24 2Z"
+                  stroke="black"
+                  strokeWidth="2"
+                  fill={
+                    featureMutation.isPending
+                      ? post.isFeatured
+                        ? "none"
+                        : "black"
+                      : post.isFeatured
+                      ? "black"
+                      : "none"
+                  }
+                />
+              </svg>
+              <span>Feature</span>
+              {featureMutation.isPending && (
+                <span className="text-xs">(in progress)</span>
+              )}
+            </div>
+          )}
+        {user && (post.user.username === user.username || isAdmin) && (
             <div className="flex items-center gap-2 py-2 text-sm cursor-pointer" onClick={handleDelete}>
             <svg
                 xmlns="http://www.w3.org/2000/svg"

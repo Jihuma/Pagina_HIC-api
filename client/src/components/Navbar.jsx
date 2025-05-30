@@ -1,43 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
+import {
     SignedIn,
-    SignedOut, 
-    UserButton 
+    SignedOut,
+    UserButton
 } from "@clerk/clerk-react";
-import Search from "./Search";
+import Search from "./Search"; // Asegúrate que este componente exista y funcione correctamente
+
 
 const Navbar = () => {
     const [open, setOpen] = useState(false);
-    const currentDate = new Date();
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const formattedDate = currentDate.toLocaleDateString('es-ES', options);
-    
-    // Obtener la ubicación actual para verificar la ruta
+    const [scrolled, setScrolled] = useState(false);
     const location = useLocation();
     const isPostListPage = location.pathname === "/posts";
 
+
+    // Función para cerrar el menú móvil al hacer clic en un enlace
+    const closeMobileMenu = () => {
+        setOpen(false);
+    };
+
+    // Modificar la función para quitar el disparo del confeti
+    const handleLogoClick = () => {
+        closeMobileMenu();
+    };
+
+    // Efecto para detectar el scroll y actualizar el estado
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollPosition = window.scrollY;
+            if (scrollPosition > 50) {
+                setScrolled(true);
+            } else {
+                setScrolled(false);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        
+        // Limpieza del evento al desmontar el componente
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, []);
+
     return (
-        <header className="bg-white shadow-md">
-            {/* Top Bar */}
-            <div className="container mx-auto px-4">
-                <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <div className="text-sm text-gray-600">
-                        <span className="mr-4">{formattedDate}</span>
-                    </div>
-                    <div className="text-sm font-semibold text-red-600">
-                        <i className="fas fa-phone-alt mr-2"></i>
-                        Emergency: (800) 555-1234
-                    </div>
-                </div>
-                
-                {/* Main Header - Estructura reorganizada para móvil */}
-                <div className="flex justify-between items-center py-4 relative">
-                    {/* Mobile Menu Button - Ahora a la izquierda */}
+        <header 
+            className={`bg-[#522c45] shadow-md fixed z-50 transition-all duration-300 ease-in-out
+                ${scrolled ? 'rounded-2xl px-4 py-1 top-[10px] mx-auto max-w-[90%] w-[90%] left-0 right-0' : 'top-0 py-1 rounded-none w-full'}
+            `}
+        >
+            <div className={`mx-auto px-4 ${scrolled ? 'max-w-[95%]' : 'container'}`}>
+                {/* Main Header */}
+                <div className={`flex justify-between items-center relative ${scrolled ? 'py-1' : 'py-3'} transition-all duration-300`}>
+                    {/* Mobile Menu Button - Izquierda */}
                     <div className="md:hidden order-1">
-                        <button 
-                            onClick={() => setOpen(!open)} 
-                            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                        <button
+                            onClick={() => setOpen(!open)}
+                            className="text-white hover:text-gray-300 focus:outline-none"
                         >
                             {open ? (
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -50,55 +70,73 @@ const Navbar = () => {
                             )}
                         </button>
                     </div>
+
+                    {/* Logo - Centrado en móvil, Izquierda en Desktop */}
+                    <div className="flex-1 md:flex-none md:order-1 order-2 flex justify-center md:justify-start">
+                        <Link to="/" className="flex items-center" onClick={handleLogoClick}>
+                            <img
+                                src="/LogoHIC.png" 
+                                alt="Hospital Infantil de Las Californias"
+                                className={`transition-all duration-300 ${scrolled ? 'h-8 md:h-10' : 'h-12 md:h-14'} mr-2`}
+                            />
+                        </Link>
+                    </div>
                     
-                    {/* Logo - Centrado en móvil */}
-                    <Link to="/" className="text-2xl font-bold text-blue-600 flex items-center md:order-1 order-2 absolute md:relative left-1/2 md:left-0 transform -translate-x-1/2 md:transform-none">
-                        <img 
-                            src="/LogoOficial_HIC.png" 
-                            alt="Hospital Infantil de Chihuahua" 
-                            className="h-12 mr-2" 
-                        />
-                    </Link>
-                    
-                    {/* Desktop Navigation */}
-                    <nav className="hidden md:flex items-center space-x-8 order-2">
-                        <Link to="/" className="font-medium hover:text-blue-600">Home</Link>
-                        <Link to="/news" className="font-medium hover:text-blue-600">News</Link>
-                        <Link to="/health-tips" className="font-medium hover:text-blue-600">Health Tips</Link>
-                        <Link to="/departments" className="font-medium hover:text-blue-600">Departments</Link>
-                        <Link to="/contact" className="font-medium hover:text-blue-600">Contact</Link>
+                    {/* Desktop Navigation - Modificado para parecerse a la imagen */}
+                    <nav className="hidden md:flex flex-grow justify-center items-center space-x-8 order-2 text-white">
+                        <Link 
+                            to="/" 
+                            className={`font-medium text-lg tracking-wide transition-colors border-b-2 ${location.pathname === '/' ? 'border-white' : 'border-transparent hover:border-white'} pb-1`}
+                        >
+                            Inicio
+                        </Link>
+                        <Link 
+                            to="/posts" 
+                            className={`font-medium text-lg tracking-wide transition-colors border-b-2 ${location.pathname === '/posts' ? 'border-white' : 'border-transparent hover:border-white'} pb-1`}
+                        >
+                            Articulos
+                        </Link>
+                        <Link 
+                            to="#" 
+                            className={`font-medium text-lg tracking-wide transition-colors border-b-2 ${location.pathname === '/contacto' ? 'border-white' : 'border-transparent hover:border-white'} pb-1`}
+                        >
+                            Contacto
+                        </Link>
                     </nav>
-                    
-                    {/* Search and User - A la derecha en móvil */}
+
+                    {/* Search and User - Derecha */}
                     <div className="flex items-center space-x-4 order-3">
-                        {!isPostListPage ? (
-                            <div className="hidden lg:block">
-                                <Search />
-                            </div>
-                        ) : (
-                            <div className="hidden lg:block" style={{ width: '225px', height: '40px' }}></div>
-                        )}
+                        {/* Mostrar Search en todas las páginas */}
+                        <div className="hidden lg:block">
+                            <Search />
+                        </div>
+                        
                         <SignedOut>
                             <Link to="/login">
-                                <button className="py-2 px-4 rounded-3xl bg-blue-800 text-white">Login</button>
+                                <button className={`transition-all duration-300 ${scrolled ? 'py-1 px-3' : 'py-2 px-4'} rounded-3xl bg-white text-[#522c45] hover:bg-gray-100 font-medium transition-colors`}>Login</button>
                             </Link>
                         </SignedOut>
                         <SignedIn>
-                            <UserButton />
+                            {/* Contenedor para Panel y UserButton */}
+                            <div className={`flex items-center space-x-3 bg-white rounded-full transition-all duration-300 ${scrolled ? 'px-2 py-1' : 'px-3 py-1.5'} hover:bg-gray-100`}>
+                                <Link to="/user-articles" className="text-[#522c45] text-sm font-medium whitespace-nowrap hover:underline">Panel</Link>
+                                <UserButton afterSignOutUrl="/" />
+                            </div>
                         </SignedIn>
                     </div>
                 </div>
             </div>
-            
-            {/* Mobile Menu */}
+
+            {/* Mobile Menu Dropdown */}
             {open && (
-                <div className="md:hidden bg-white border-t border-gray-100 py-4">
-                    <div className="container mx-auto px-4 flex flex-col space-y-4">
-                        <Link to="/" className="font-medium hover:text-blue-600">Home</Link>
-                        <Link to="/news" className="font-medium hover:text-blue-600">News</Link>
-                        <Link to="/health-tips" className="font-medium hover:text-blue-600">Health Tips</Link>
-                        <Link to="/departments" className="font-medium hover:text-blue-600">Departments</Link>
-                        <Link to="/contact" className="font-medium hover:text-blue-600">Contact</Link>
+                <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg py-4 z-40">
+                    <div className="container mx-auto px-4 flex flex-col space-y-3">
+                        <Link to="/" className="font-medium text-gray-700 hover:text-[#522c45] py-1" onClick={closeMobileMenu}>Inicio</Link>
+                        <Link to="/posts" className="font-medium text-gray-700 hover:text-[#522c45] py-1" onClick={closeMobileMenu}>Articulos</Link>
+                        <Link to="#" className="font-medium text-gray-700 hover:text-[#522c45] py-1" onClick={closeMobileMenu}>Contacto</Link>
+                        <SignedIn>
+                            <Link to="/user-articles" className="font-medium text-gray-700 hover:text-[#522c45] py-1" onClick={closeMobileMenu}>Panel</Link>
+                        </SignedIn>
                     </div>
                 </div>
             )}

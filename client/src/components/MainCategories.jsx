@@ -42,8 +42,8 @@ const MainCategories = () => {
       icon: "fas fa-child",
       description: "Latest updates on children's health issues and well-being",
       link: "/posts?cat=child-health",
-      color: "bg-blue-600 text-white",
-      hoverColor: "hover:bg-blue-700"
+      color: "bg-[#375D9D] text-white", // Pantone 7684
+      hoverColor: "hover:bg-[#2A4A80]"
     },
     {
       id: 2,
@@ -51,8 +51,8 @@ const MainCategories = () => {
       icon: "fas fa-syringe",
       description: "Information on new vaccines and immunization schedules",
       link: "/posts?cat=vaccination",
-      color: "bg-green-600 text-white",
-      hoverColor: "hover:bg-green-700"
+      color: "bg-[#77BC1F] text-white", // Pantone 368
+      hoverColor: "hover:bg-[#65A01A]"
     },
     {
       id: 3,
@@ -60,8 +60,8 @@ const MainCategories = () => {
       icon: "fas fa-apple-alt",
       description: "Healthy eating tips and dietary guidance for growing children",
       link: "/posts?cat=nutrition",
-      color: "bg-orange-500 text-white",
-      hoverColor: "hover:bg-orange-600"
+      color: "bg-[#E2231A] text-white", // Pantone 485
+      hoverColor: "hover:bg-[#C01D15]"
     },
     {
       id: 4,
@@ -69,8 +69,8 @@ const MainCategories = () => {
       icon: "fas fa-shield-alt",
       description: "Keeping your children safe at home and outdoors",
       link: "/posts?cat=safety",
-      color: "bg-red-600 text-white",
-      hoverColor: "hover:bg-red-700"
+      color: "bg-[#FFD100] text-gray-800", // Pantone 109 (con texto oscuro para mejor contraste)
+      hoverColor: "hover:bg-[#E5BC00]"
     },
     {
       id: 5,
@@ -78,8 +78,8 @@ const MainCategories = () => {
       icon: "fas fa-calendar-alt",
       description: "Upcoming workshops, screenings, and community activities",
       link: "/posts?cat=events",
-      color: "bg-purple-600 text-white",
-      hoverColor: "hover:bg-purple-700"
+      color: "bg-[#375D9D] text-white", // Pantone 7684 (repetido pero no consecutivo)
+      hoverColor: "hover:bg-[#2A4A80]"
     }
   ];
 
