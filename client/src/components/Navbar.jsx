@@ -6,7 +6,7 @@ import {
     UserButton
 } from "@clerk/clerk-react";
 import Search from "./Search"; 
-import ContactForm from "./ContactForm"; // Importamos el nuevo componente
+import ContactForm from "./ContactForm"; 
 
 
 const Navbar = () => {

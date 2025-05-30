@@ -10,7 +10,7 @@ const Confetti = () => {
     if (event && event.clientX && event.clientY) {
       setPosition({ x: event.clientX, y: event.clientY });
     } else {
-      // Posición predeterminada: centro de la pantalla
+      // Posición centro de la pantalla
       setPosition({ 
         x: window.innerWidth / 2, 
         y: window.innerHeight / 2 

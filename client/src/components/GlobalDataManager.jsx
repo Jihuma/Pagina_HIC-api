@@ -74,7 +74,8 @@ const GlobalDataManager = () => {
 
     const handleOffline = () => {
       console.log('Conexión a internet perdida');
-      toast.error('Conexión a internet perdida. Intentando reconectar...');
+      // Comentamos el toast para que no se muestre el mensaje
+      // toast.error('Conexión a internet perdida. Intentando reconectar...');
     };
 
     // Registrar listeners para eventos de visibilidad y conexión

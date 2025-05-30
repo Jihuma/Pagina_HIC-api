@@ -2,12 +2,11 @@ import DOMPurify from "dompurify";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import Image from "../components/Image";
 import { Link, useParams } from "react-router-dom";
-import PostMenuActions from "../components/PostMenuActions";
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
-// import { format } from "timeago.js"; // No se usa 'format' directamente, solo 'formatDate' local
 import Footer from "../components/Footer";
 import { useState, useEffect } from "react";
+import { useUser } from "@clerk/clerk-react";
 
 const fetchPost = async (slug) => {
   const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts/${slug}`);
@@ -16,6 +15,7 @@ const fetchPost = async (slug) => {
 
 const SinglePostPage = () => {
   const { slug } = useParams();
+  const { isSignedIn } = useUser();
   const [currentStep, setCurrentStep] = useState(1);
   const [formOpacity, setFormOpacity] = useState(1);
   const [formData, setFormData] = useState({
@@ -37,24 +37,74 @@ const SinglePostPage = () => {
     queryFn: () => fetchPost(slug),
   });
 
-  // Agregar este console.log para debuggear
-  if (data) {
-    console.log("Datos del post recibidos:", data);
-    console.log("Contenido del post:", data.content);
-    console.log("Longitud del contenido:", data.content ? data.content.length : 0);
-  }
+  // Consulta para obtener las categorías
+  const {
+    data: categoriesData,
+    error: categoriesError,
+    status: categoriesStatus,
+  } = useQuery({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/categories`);
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+
+  // Nueva consulta para obtener posts relacionados por categoría
+  const {
+    data: relatedPostsData,
+    error: relatedPostsError,
+    status: relatedPostsStatus,
+  } = useQuery({
+    queryKey: ['relatedPosts', data?.category],
+    queryFn: async () => {
+      if (!data?.category) return { posts: [] };
+      
+      const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts`, {
+        params: { 
+          cat: data.category,
+          limit: 2,
+          page: 1
+        }
+      });
+      
+      // Filtrar para excluir el post actual
+      const filteredPosts = res.data.posts.filter(post => post._id !== data._id);
+      return { posts: filteredPosts.slice(0, 2) }; // Asegurar máximo 2 artículos
+    },
+    enabled: !!data?.category, // Solo ejecutar cuando tengamos la categoría del post actual
+    staleTime: 0, // Siempre considerar los datos como obsoletos
+    cacheTime: 1000 * 60, // Mantener en caché por 1 minuto
+    refetchOnMount: true, // Actualizar al montar el componente
+    refetchOnWindowFocus: true, // Actualizar cuando la ventana recupera el foco
+  });
+
+  // Componente PuzzleCard para las categorías
+  const PuzzleCard = ({ children, pieceBg, pageBg, className, style, onClick }) => {
+    return (
+      <div 
+        className={`puzzle-piece relative ${pieceBg} rounded-lg p-4 shadow-md transition-all duration-300 hover:shadow-lg ${className}`}
+        style={style}
+        onClick={onClick}
+      >
+        {/* Contenido de la tarjeta */}
+        <div className="relative z-10">
+          {children}
+        </div>
+      </div>
+    );
+  };
 
   useEffect(() => {
-    // Trigger fade-in after step changes
     setFormOpacity(1);
     // Si volvemos a un paso anterior al de éxito, reseteamos el estado de envío
     if (currentStep < 4) {
         setFormSubmitted(false);
-        setSubmitError(null); // También limpiar errores previos al cambiar de paso
+        setSubmitError(null); // Limpiar errores previos al cambiar de paso
     }
   }, [currentStep]);
 
-  // Definir handleInputChange DENTRO del componente
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData(prevFormData => ({
@@ -64,14 +114,12 @@ const SinglePostPage = () => {
   };
 
   const changeStep = (newStep) => {
-    setFormOpacity(0); // Start fade-out
+    setFormOpacity(0); 
     setTimeout(() => {
       setCurrentStep(newStep);
-      // setFormOpacity(1) será manejado por el useEffect que observa currentStep
-    }, 300); // Duración del fade-out (debe coincidir con la transición CSS)
+    }, 300); // Duración del fade-out
   };
   
-  // Definir handleSubmitForm DENTRO del componente
   const handleSubmitForm = async () => {
     try {
       setSubmitError(null); // Limpiar errores previos
@@ -101,13 +149,14 @@ const SinglePostPage = () => {
         setSubmitError("Por favor ingrese un correo electrónico válido.");
         return;
       }
-      // Validar formato de teléfono (ejemplo: solo números, opcionalmente con guiones o espacios, entre 7 y 15 dígitos)
+      // Validar formato de teléfono
       if (!/^\+?(\d[\s-]?){6,14}\d$/.test(formData.contactPhone)) {
          setSubmitError("Por favor ingrese un número de teléfono válido.");
          return;
       }
 
-      console.log("Enviando formulario:", formData); // Log para depuración
+      // console.log("Enviando formulario:", formData); // Log para depuración
+
       // Asegúrate de que el endpoint `/contact-forms` exista en tu backend
       // y esté preparado para recibir estos datos.
       await axios.post(`${import.meta.env.VITE_API_URL}/api/contact-forms`, {
@@ -121,7 +170,6 @@ const SinglePostPage = () => {
     } catch (error) {
       console.error("Error al enviar formulario:", error.response ? error.response.data : error.message);
       setSubmitError(error.response?.data?.message || "Ocurrió un error al enviar el formulario. Por favor intente nuevamente más tarde.");
-      // No cambiar de paso si hay un error, para que el usuario vea el mensaje.
     }
   };
 
@@ -131,14 +179,24 @@ const SinglePostPage = () => {
     </div>
   );
   
-  if (error) return (
-    <div className="text-center py-20 text-red-500">
-      <i className="fas fa-exclamation-triangle text-3xl mb-3"></i>
-      <p>Algo salió mal al cargar el artículo. Por favor, intenta de nuevo más tarde.</p>
-      <p className="text-sm mt-2">{error.message}</p>
-    </div>
-  );
-  
+  // Modificar esta parte donde se maneja el error
+  if (error) {
+    // Si tenemos datos en caché, mostrarlos aunque haya un error en la recarga
+    if (data) {
+      // Mostrar un toast o notificación sutil en lugar de página de error completa
+      console.error("Error al actualizar datos:", error);
+      
+    } else {
+      // Solo mostrar página de error completa si no hay datos en absoluto
+      return (
+        <div className="text-center py-20 text-red-500">
+          <i className="fas fa-exclamation-triangle text-3xl mb-3"></i>
+          <p>Algo salió mal al cargar el artículo. Por favor, intenta de nuevo más tarde.</p>
+          <p className="text-sm mt-2">{error.message}</p>
+        </div>
+      );
+    }
+  }
 
   if (!data) return (
     <div className="text-center py-20 text-gray-500">
@@ -153,7 +211,7 @@ const SinglePostPage = () => {
   console.log("Contenido antes de sanitizar:", data.content.substring(0, 200) + "...");
   const sanitized = DOMPurify.sanitize(data.content, {
   ALLOWED_TAGS: ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'ul', 'ol', 'li', 'blockquote', 'img', 'em', 'strong', 'br', 'div', 'span'],
-  ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'style']
+  ALLOWED_ATTR: ['href', 'src', 'alt', 'class', 'style', 'align', 'data-align']
   });
   console.log("Contenido después de sanitizar:", sanitized.substring(0, 200) + "...");
   return sanitized;
@@ -212,7 +270,7 @@ const SinglePostPage = () => {
 
   return (
     <HelmetProvider>
-      <div className="flex flex-col min-h-screen">
+      <div className="min-h-screen flex flex-col bg-gray-50">
         <Helmet>
           <title>{data.title || "Artículo"} | Blog</title>
           <meta name="description" content={sanitizedDesc} />
@@ -261,23 +319,8 @@ const SinglePostPage = () => {
                 </div>
               )}
               
-              <div className="mb-8 bg-purple-50 bg-opacity-70 p-6 rounded-lg border-l-4 border-purple-400 shadow-sm">
-                <div className="pl-4">
-                  <p className="text-lg italic text-purple-800 leading-relaxed">
-                    "{sanitizedDesc}"
-                  </p>
-                  {/* data.author no es un campo estándar en tu modelo Post. Quizás quisiste usar data.user.username? */}
-                  {/* Si 'author' y 'authorTitle' son campos que añades al post en el backend, está bien. */}
-                  {data.customAuthorField && ( 
-                    <p className="mt-3 text-sm text-gray-600">
-                      — {data.customAuthorField}, {data.customAuthorTitle || 'Fuente'}
-                    </p>
-                  )}
-                </div>
-              </div>
-              
               <div 
-                className="post-content prose prose-lg max-w-none mb-12 bg-white p-6 rounded-lg shadow-sm"
+                className="post-content prose prose-lg prose-img:m-0 prose-img:!inline max-w-none mb-12 bg-white p-6 rounded-lg shadow-sm"
               >
                 {sanitizedContent ? (
                   <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
@@ -488,45 +531,62 @@ const SinglePostPage = () => {
             {/* Barra lateral */}
             <div className="lg:col-span-1">
               <div className="sticky top-8 space-y-8">
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">Buscar Artículo</h2>
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Buscar..." 
-                      className="w-full py-2 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                {/* Presentación de la institución */}
+                <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100">
+                  <div className="flex justify-center mb-2">
+                    <img 
+                      src="/LogoOficial_HIC.png" 
+                      alt="Logo HIC" 
+                      className="h-24 object-contain"
                     />
-                    <button className="absolute right-3 top-2.5 text-blue-600">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
-                    </button>
                   </div>
+                  <p className="text-gray-600 text-sm">
+                  El Hospital Infantil de las Californias brinda desde 1994 servicios de salud a niños, niñas y adolescentes desde recién nacidos hasta cumplir 18 años de edad, sin importar su nivel socioeconómico, raza o religión. Cuenta con más de 20 especialidades pediátricas, cirugías de corta estancia, farmacia, rehabilitación y terapia física, Centro Integral de Psicología y Psicopedagogía Infantil, Clínica de Odontología Infantil, así como programas educativos enfocados en la nutrición y prevención.
+                  </p>
                 </div>
                 
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                  <h2 className="text-xl font-bold text-gray-800 mb-4">Artículos Relacionados</h2>
-                  {/* Aquí podrías cargar artículos relacionados dinámicamente */}
-                  <ul className="space-y-4">
-                    <li><Link to="#" className="text-blue-600 hover:underline">Artículo Relacionado 1</Link></li>
-                    <li><Link to="#" className="text-blue-600 hover:underline">Artículo Relacionado 2</Link></li>
-                  </ul>
-                </div>
-                
+                {/* Categorías - Estilo SideMenu */}
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
                   <h2 className="text-xl font-bold text-gray-800 mb-4">Categorías</h2>
-                   {/* Aquí podrías cargar categorías dinámicamente */}
-                  <div className="flex flex-col space-y-2">
-                    <div className="flex justify-between items-center"><Link to="#" className="text-blue-600 hover:underline">Categoría A</Link><span className="text-gray-500 text-sm">(5)</span></div>
-                    <div className="flex justify-between items-center"><Link to="#" className="text-blue-600 hover:underline">Categoría B</Link><span className="text-gray-500 text-sm">(8)</span></div>
+                  
+                  <div className="flex flex-col gap-4">
+                    {categoriesStatus === "loading" ? (
+                      <div className="text-center py-4">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                      </div>
+                    ) : categoriesStatus === "error" ? (
+                      <div className="text-center py-4 text-red-500">
+                        Error al cargar categorías
+                      </div>
+                    ) : categoriesData && categoriesData.length > 0 ? (
+                      categoriesData.map((category) => (
+                        <Link key={category._id} to={`/posts?cat=${category.slug}`} className="block transform transition-transform hover:-translate-y-1">
+                          <PuzzleCard 
+                            pieceBg={category.color.startsWith('#') ? '' : category.color || "bg-[#375D9D] text-white"} 
+                            pageBg="bg-white"
+                            className={category.color.startsWith('#') ? '' : category.hoverColor || "hover:bg-[#2A4A80]"}
+                            style={category.color.startsWith('#') ? { 
+                              backgroundColor: category.color, 
+                              color: 'white',
+                              ':hover': { backgroundColor: category.hoverColor?.replace('hover:bg-[', '').replace(']', '') || category.color }
+                            } : {}}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-white bg-opacity-20 flex items-center justify-center icon-coin-flip">
+                                <i className={category.icon || "fas fa-folder"}></i>
+                              </div>
+                              <h3 className="text-sm font-medium">{category.name}</h3>
+                            </div>
+                          </PuzzleCard>
+                        </Link>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        No hay categorías disponibles
+                      </div>
+                    )}
                   </div>
                 </div>
-                
-                {data && data.user && ( // Solo mostrar PostMenuActions si hay datos del post y del usuario
-                    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                        <PostMenuActions post={data}/>
-                    </div>
-                )}
               </div>
             </div>
           </div>
@@ -536,9 +596,75 @@ const SinglePostPage = () => {
           <Footer />
         </div>
         
+        {/* Botón flotante para crear artículos */}
+        {isSignedIn && (
+          <div className="fixed bottom-6 right-6 z-50 animate-slideUp">
+            <Link 
+              to="/write"
+              className="group relative flex items-center justify-center w-[50px] h-[50px] rounded-full bg-[#522c45] shadow-lg cursor-pointer transition-all duration-500 overflow-hidden hover:w-[140px] hover:rounded-[50px] hover:bg-[#64599a] hover:scale-105 hover:shadow-xl"
+              aria-label="Crear artículo"
+            >
+              <svg 
+                viewBox="0 0 24 24" 
+                className="w-[20px] h-[20px] transition-all duration-500 group-hover:opacity-0 group-hover:scale-0 group-hover:rotate-90"
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path 
+                  d="M12 5v14m-7-7h14" 
+                  stroke="white" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="absolute left-[50px] opacity-0 text-white text-sm font-medium transition-all duration-500 group-hover:opacity-100 whitespace-nowrap">
+                Crear artículo
+              </span>
+            </Link>
+          </div>
+        )}
+        
         <style jsx>{`
           .shadow-inner-bottom { box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1); }
           .shadow-top-bottom { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+          
+          .puzzle-piece {
+            position: relative;
+          }
+          
+          /* Animación para los iconos */
+          .icon-coin-flip {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+          }
+          
+          .puzzle-piece:hover .icon-coin-flip {
+            transform: rotateY(180deg);
+            animation: coinFlip 1.5s infinite;
+          }
+          
+          @keyframes coinFlip {
+            0% {
+              transform: rotateY(0);
+            }
+            50% {
+              transform: rotateY(180deg);
+            }
+            100% {
+              transform: rotateY(360deg);
+            }
+          }
+          
+          @keyframes scale-in {
+            0% { transform: scale(0); }
+            80% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+          }
+          
+          .animate-scale-in {
+            animation: scale-in 0.3s ease-out forwards;
+          }
         `}</style>
       </div>
     </HelmetProvider>

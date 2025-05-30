@@ -10,6 +10,7 @@ import { toast } from "react-toastify";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 import Footer from "../components/Footer";
 import Confetti from "../components/Confetti";
+import FeaturedLimitModal from "../components/FeaturedLimitModal";
 
 // Función para obtener los artículos del usuario
 
@@ -31,7 +32,7 @@ const fetchUserPosts = async (pageParam, token) => {
     // Si el error es 404, podría ser un problema temporal
     if (error.response && error.response.status === 404) {
       console.log("Intentando recuperarse de error 404...");
-      toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
+      // toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
       // Retornar datos vacíos para evitar errores en la UI
       return { posts: [], hasMore: false, totalPosts: 0, page: pageParam };
     }
@@ -74,7 +75,7 @@ const fetchAllUserPosts = async (pageParam, token) => {
       toast.error("No tienes permisos para ver todos los artículos");
     } else if (error.response && error.response.status === 404) {
       console.log("Intentando recuperarse de error 404...");
-      toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
+      // toast.error("No se pudo conectar con el servidor. Intentando nuevamente...");
       // Retornar datos vacíos para evitar errores en la UI
       return { posts: [], hasMore: false, totalPosts: 0, page: pageParam };
     }
@@ -103,6 +104,7 @@ const UserArticlesPage = () => {
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeletingCategory, setIsDeletingCategory] = useState(false);
   const [expandedForm, setExpandedForm] = useState(null);
+  const [showFeaturedLimitModal, setShowFeaturedLimitModal] = useState(false);
   
   // Inicializar el confeti
   const confetti = Confetti();
@@ -295,7 +297,43 @@ const UserArticlesPage = () => {
     }
   }, [location, confetti, navigate]);
 
-  // ... existing code ...
+  // Añadir esta mutación después de las otras mutaciones existentes
+const featureMutation = useMutation({
+  mutationFn: async (postId) => {
+    const token = await getToken();
+    return axios.patch(
+      `${import.meta.env.VITE_API_URL}/posts/feature`,
+      {
+        postId: postId,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+  },
+  onSuccess: () => {
+    // Invalidar las consultas para actualizar los datos
+    queryClient.invalidateQueries({ queryKey: ["userPosts"] });
+    queryClient.invalidateQueries({ queryKey: ["allUserPosts"] });
+    queryClient.invalidateQueries({ queryKey: ["featuredPosts"] });
+    toast.success("Estado destacado actualizado correctamente");
+  },
+  onError: (error) => {
+    // Si el error es porque ya hay 3 posts destacados, mostrar el modal
+    if (error.response?.status === 400) {
+      setShowFeaturedLimitModal(true);
+    } else {
+      toast.error(error.response?.data?.message || "Error al actualizar estado destacado");
+    }
+  },
+});
+
+// Función para manejar el destacado de posts
+const handleFeature = (postId) => {
+  featureMutation.mutate(postId);
+};
 
 // 1. Primero definimos todas las consultas
 const {
@@ -426,9 +464,7 @@ useEffect(() => {
   };
 }, [queryClient, isSignedIn, getToken, activeTab, refetchArticles, refetchForms, refetchAllArticles, isAdmin]);
 
-// ... existing code ...
-
-  // Mutación para eliminar un artículo
+// Mutación para eliminar un artículo
   const deleteMutation = useMutation({
     mutationFn: async (postId) => {
       return axios.delete(`${import.meta.env.VITE_API_URL}/api/user-posts/${postId}`, {
@@ -595,6 +631,30 @@ useEffect(() => {
               <h1 className="text-4xl font-bold text-gray-800 mb-4">Mi Panel</h1>
               <div className="text-sm text-gray-600 mb-6">
                 Administra tus artículos y formularios de contacto
+              </div>
+              
+              {/* Botón para crear nuevo artículo */}
+              <div className="mb-6">
+                <Link 
+                  to="/write" 
+                  className="inline-flex items-center px-6 py-3 bg-[#522c45] hover:bg-[#64599a] text-white font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+                >
+                  <svg 
+                    viewBox="0 0 24 24" 
+                    className="w-5 h-5 mr-2"
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path 
+                      d="M12 5v14m-7-7h14" 
+                      stroke="white" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  Crear nuevo artículo
+                </Link>
               </div>
               
               {/* Pestañas de navegación */}
@@ -769,6 +829,25 @@ useEffect(() => {
                                     >
                                       <i className="fas fa-edit"></i>
                                     </Link>
+                                    {isAdmin && (
+                                      <button
+                                        onClick={() => handleFeature(post._id)}
+                                        className="text-yellow-600 hover:text-yellow-900"
+                                        title={post.isFeatured ? "Quitar de destacados" : "Marcar como destacado"}
+                                      >
+                                        <svg
+                                          xmlns="http://www.w3.org/2000/svg"
+                                          viewBox="0 0 24 24"
+                                          width="16px"
+                                          height="16px"
+                                          fill={post.isFeatured ? "currentColor" : "none"}
+                                          stroke="currentColor"
+                                          strokeWidth="2"
+                                        >
+                                          <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                                        </svg>
+                                      </button>
+                                    )}
                                     <button 
                                       onClick={() => handleDeleteClick(post)}
                                       className="text-red-600 hover:text-red-900"
@@ -921,6 +1000,23 @@ useEffect(() => {
                                       <i className="fas fa-edit"></i>
                                     </Link>
                                     <button
+                                      onClick={() => handleFeature(post._id)}
+                                      className="text-yellow-600 hover:text-yellow-900"
+                                      title={post.isFeatured ? "Quitar de destacados" : "Marcar como destacado"}
+                                    >
+                                      <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        viewBox="0 0 24 24"
+                                        width="16px"
+                                        height="16px"
+                                        fill={post.isFeatured ? "currentColor" : "none"}
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                      >
+                                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
+                                      </svg>
+                                    </button>
+                                    <button
                                       onClick={() => handleDeleteClick(post)}
                                       className="text-red-600 hover:text-red-900"
                                     >
@@ -1012,16 +1108,12 @@ useEffect(() => {
                                         <span>{form.childName}</span>
                                       </div>
                                       <div className="flex">
-                                        <span className="font-medium w-32">Edad:</span>
-                                        <span>{form.childAge} años</span>
-                                      </div>
-                                      <div className="flex">
                                         <span className="font-medium w-32">Género:</span>
                                         <span>{form.childGender}</span>
                                       </div>
                                       <div className="flex">
                                         <span className="font-medium w-32">Expediente:</span>
-                                        <span>{form.fileNumber || 'No especificado'}</span>
+                                        <span>{form.childAge || 'No especificado'}</span>
                                       </div>
                                     </div>
                                   </div>
@@ -1472,6 +1564,10 @@ useEffect(() => {
         <div className="-mx-4 md:-mx-8 lg:-mx-16 xl:-mx-32 2xl:-mx-64 mt-auto">
           <Footer />
         </div>
+        
+        {showFeaturedLimitModal && (
+          <FeaturedLimitModal onClose={() => setShowFeaturedLimitModal(false)} />
+        )}
       </div>
     </HelmetProvider>
   );

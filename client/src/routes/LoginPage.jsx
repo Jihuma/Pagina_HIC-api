@@ -9,7 +9,6 @@ const PNG_IMAGES = [
   '/verde.png'
 ];
 
-// Function to get a shuffled array without consecutive duplicates
 const getShuffledImages = (count) => {
   const result = [];
   let lastImage = null;
@@ -28,7 +27,6 @@ const getShuffledImages = (count) => {
   return result;
 };
 
-// Component for the scrolling images background
 const ScrollingImagesBackground = () => {
   const [images, setImages] = useState([]);
   const imagesPerRow = 25;
@@ -103,7 +101,6 @@ const ScrollingImagesBackground = () => {
   );
 };
 
-// Component to inject CSS styles
 const StyleInjector = () => {
   useEffect(() => {
     const styleSheet = document.createElement("style");

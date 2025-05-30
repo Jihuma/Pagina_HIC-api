@@ -73,23 +73,26 @@ axiosClient.interceptors.response.use(
     // Si hemos agotado los reintentos o es otro tipo de error
     if (originalRequest && originalRequest._retry >= MAX_RETRIES) {
       console.error(`Se agotaron los reintentos (${MAX_RETRIES}) para la solicitud.`);
-      // Solo mostrar toast si no es una solicitud silenciosa
-      if (!originalRequest.silentError) {
-        toast.error('Error de conexión. Por favor, verifica tu conexión a internet.');
-      }
+      // Comentamos los toast para que no se muestren errores de conexión
+      // if (!originalRequest.silentError) {
+      //   toast.error('Error de conexión. Por favor, verifica tu conexión a internet.');
+      // }
     } else if (error.response) {
-      // Errores con respuesta del servidor
+      // Errores con respuesta del servidor - solo mostrar errores críticos de autenticación
       if (error.response.status === 401 && !originalRequest.silentError) {
         toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
       } else if (error.response.status === 403 && !originalRequest.silentError) {
         toast.error('No tienes permisos para realizar esta acción.');
-      } else if (!originalRequest.silentError) {
-        toast.error(error.response.data?.message || 'Ha ocurrido un error. Inténtalo de nuevo más tarde.');
-      }
-    } else if (!originalRequest?.silentError) {
-      // Errores sin respuesta (problemas de red)
-      toast.error('Error de conexión. Por favor, verifica tu conexión a internet.');
-    }
+      } 
+      // Comentamos el mensaje genérico de error
+      // else if (!originalRequest.silentError) {
+      //   toast.error(error.response.data?.message || 'Ha ocurrido un error. Inténtalo de nuevo más tarde.');
+      // }
+    } 
+    // Comentamos el mensaje de error de conexión
+    // else if (!originalRequest?.silentError) {
+    //   toast.error('Error de conexión. Por favor, verifica tu conexión a internet.');
+    // }
     
     return Promise.reject(error);
   }

@@ -6,7 +6,7 @@ import {
     deleteUserPost,
     getAllUserPosts,
     updatePostAsAdmin,
-    getPostAsAdmin // Añadir esta importación
+    getPostAsAdmin 
 } from "../controllers/userPosts.controller.js"
 import { requireAuth } from '@clerk/express'
 

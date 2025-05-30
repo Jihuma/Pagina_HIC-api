@@ -28,7 +28,6 @@ const getShuffledImages = (count) => {
   return result;
 };
 
-// Component for the scrolling images background
 const ScrollingImagesBackground = () => {
   const [images, setImages] = useState([]);
   const imagesPerRow = 25;

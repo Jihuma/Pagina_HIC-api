@@ -11,7 +11,13 @@ import { Helmet, HelmetProvider } from "react-helmet-async"
 import Footer from "../components/Footer"
 import Picker from 'emoji-picker-react'
 
+// Descomenta esta importación
+import { useQueryClient } from "@tanstack/react-query";
+
 const EditPost = () => {
+  // Añade esta línea para inicializar queryClient
+  const queryClient = useQueryClient();
+  
   const { id } = useParams(); // Obtener el ID del post de la URL
   const { isLoaded, isSignedIn, user } = useUser();
   const [value, setValue] = useState('');
@@ -28,7 +34,7 @@ const EditPost = () => {
   const { getToken } = useAuth();
   const location = useLocation();
 
-  // Añadir esta consulta para obtener las categorías
+  // Consulta para obtener las categorías
   const {
     data: categoriesData,
     error: categoriesError,
@@ -61,7 +67,7 @@ const EditPost = () => {
         [{ 'color': [] }, { 'background': [] }],
         [{ 'list': 'ordered' }, { 'list': 'bullet' }],
         [{ 'align': [] }],
-        ['link', 'video'],
+        ['link'],
         ['clean']
       ],
     },
@@ -196,10 +202,18 @@ const EditPost = () => {
         }
       });
     },
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success("¡Artículo actualizado correctamente!");
-      // Siempre redirigir a /user-articles
-      navigate('/user-articles');
+      
+      // Invalidar las consultas relacionadas para forzar una actualización
+      queryClient.invalidateQueries(['post', id]);
+      queryClient.invalidateQueries(['userPosts']);
+      
+      // Obtener el slug del post actualizado de la respuesta
+      const updatedSlug = response.data.slug || id;
+      
+      // Redirigir al post actualizado en lugar de a la lista de artículos
+      navigate(`/post/${updatedSlug}`, { replace: true });
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || "Error al actualizar el artículo. Inténtalo de nuevo.");

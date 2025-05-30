@@ -10,7 +10,7 @@ const PostListItem = ({ post, isLarge = false }) => {
     return date.toLocaleDateString('es-ES', options);
   };
 
-  // Si es una tarjeta pequeña, usamos un diseño horizontal
+  // Si es una tarjeta pequeña, usa un diseño horizontal
   if (!isLarge) {
     return (
       <div className="bg-white rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 h-full flex">
@@ -113,7 +113,7 @@ const PostListItem = ({ post, isLarge = false }) => {
           <Link to={`/post/${post.slug}`}
               className="inline-flex items-center text-teal-600 hover:text-teal-800 text-sm font-medium"
             >
-              Read More <i className="fas fa-arrow-right ml-1 text-xs"></i>
+              Leer más <i className="fas fa-arrow-right ml-1 text-xs"></i>
             </Link>
           </div>
         </div>

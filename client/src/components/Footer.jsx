@@ -25,16 +25,16 @@ const Footer = () => {
           
           {/* Redes sociales con estilo redondeado y animaciones */}
           <div className="flex space-x-3 bg-gray-700 rounded-full px-5 py-2">
-            <a href="#" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#3b5998] rounded-md">
+            <a href="https://www.facebook.com/hicoficial/" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#3b5998] rounded-md">
               <i className="fab fa-facebook-f"></i>
             </a>
-            <a href="#" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#1DA1F2] rounded-md">
+            <a href="https://x.com/i/flow/login?redirect_after_login=%2Fhicoficial" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#1DA1F2] rounded-md">
               <i className="fab fa-twitter"></i>
             </a>
-            <a href="#" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#FF0000] rounded-md">
+            <a href="https://www.youtube.com/user/HICoficial" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#FF0000] rounded-md">
               <i className="fab fa-youtube"></i>
             </a>
-            <a href="#" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#E1306C] rounded-md">
+            <a href="https://www.instagram.com/hicoficial/" className="text-sm flex items-center justify-center w-6 h-6 transition-transform duration-300 hover:scale-110 hover:bg-[#E1306C] rounded-md">
               <i className="fab fa-instagram"></i>
             </a>
           </div>

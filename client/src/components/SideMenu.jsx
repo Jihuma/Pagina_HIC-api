@@ -74,10 +74,10 @@ const SideMenu = ({ onFilterChange }) => {
         
         <div className="flex flex-col gap-3 text-sm">
           {[
-            { value: 'newest', label: 'Newest' },
-            { value: 'popular', label: 'Most Popular' },
-            { value: 'trending', label: 'Trending' },
-            { value: 'oldest', label: 'Oldest' }
+            { value: 'newest', label: 'Más reciente' },
+            { value: 'popular', label: 'Más popular' },
+            { value: 'trending', label: 'Tendencias' },
+            { value: 'oldest', label: 'Más antiguo' }
           ].map((filter) => (
             <label 
               key={filter.value} 

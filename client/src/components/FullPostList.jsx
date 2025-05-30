@@ -82,13 +82,24 @@ const FullPostList = ({ onEndReached, selectedFilter }) => {
     </div>
   );
 
-  if (status === "error") return (
-    <div className="text-center py-10 text-red-500">
-      <i className="fas fa-exclamation-triangle text-3xl mb-3"></i>
-      <p>Algo salió mal al cargar los artículos. Por favor, intenta de nuevo más tarde.</p>
-      <p className="text-sm mt-2">{error.message}</p>
-    </div>
-  );
+  // Modificar esta parte donde se maneja el error
+  if (status === "error") {
+  // Si tenemos datos en caché, mostrarlos aunque haya un error en la recarga
+  if (allPosts && allPosts.length > 0) {
+    // Solo registrar el error en la consola, sin mostrar nada al usuario
+    console.error("Error al actualizar lista:", error);
+
+  } else {
+    // Solo mostrar página de error completa si no hay datos en absoluto
+    // y no hay otra opción que mostrar algo al usuario
+    return (
+      <div className="text-center py-10">
+        <i className="fas fa-exclamation-triangle text-3xl mb-3 text-gray-400"></i>
+        <p className="text-gray-600">No se pudieron cargar los artículos en este momento.</p>
+      </div>
+    );
+  }
+}
   
   // Mostrar mensaje cuando no hay resultados
   if (noResults) {
@@ -199,7 +210,7 @@ const FullPostList = ({ onEndReached, selectedFilter }) => {
                   <Link to={`/post/${post.slug}`}
                       className="inline-flex items-center text-teal-600 hover:text-teal-800 font-medium"
                     >
-                      Read More <i className="fas fa-arrow-right ml-1 text-xs"></i>
+                      Leer más <i className="fas fa-arrow-right ml-1 text-xs"></i>
                     </Link>
                   </div>
                 </div>

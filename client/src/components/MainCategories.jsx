@@ -41,15 +41,11 @@ const PuzzleCard = ({ children, pieceBg, pageBg, className, onClick, style }) =>
 
 const MainCategories = () => {
   const navigate = useNavigate();
-  // Estado para controlar el índice inicial del carrusel
-  const [startIndex, setStartIndex] = useState(0);
-  // Estado para controlar la animación de deslizamiento
-  const [slideDirection, setSlideDirection] = useState(null);
+  const [startIndex, setStartIndex] = useState(0); // Estado para controlar el índice inicial del carrusel
+  const [slideDirection, setSlideDirection] = useState(null); // Estado para controlar la animación de deslizamiento
   const [isAnimating, setIsAnimating] = useState(false);
-  // Número de categorías a mostrar a la vez
-  const itemsToShow = 4;
-  // Estado para controlar las categorías visibles
-  const [visibleCategories, setVisibleCategories] = useState([]);
+  const itemsToShow = 4; // Número de categorías a mostrar a la vez
+  const [visibleCategories, setVisibleCategories] = useState([]); // Estado para controlar las categorías visibles
 
   // Añadir esta consulta para obtener las categorías
   const {
@@ -82,7 +78,7 @@ const MainCategories = () => {
     }
   }, [startIndex, categoriesData]);
 
-  // Función para actualizar las categorías visibles basadas en el índice actual
+ 
 // Función para actualizar las categorías visibles basadas en el índice actual
 const updateVisibleCategories = () => {
   if (!categoriesData || categoriesData.length === 0) return;
@@ -135,7 +131,6 @@ const updateVisibleCategories = () => {
     return slideDirection === 'left' ? 'animate-slide-left' : 'animate-slide-right';
   };
 
-  // Función para renderizar una categoría
 // Función para renderizar una categoría
 const renderCategory = (category, index) => {
     // Mostrar mensaje de carga o error

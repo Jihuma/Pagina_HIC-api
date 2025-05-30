@@ -19,8 +19,9 @@ const HomePostList = () => {
   } = useQuery({
     queryKey: ['homePosts'],
     queryFn: fetchHomePosts,
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60, // Reducido a 1 minuto
+    refetchOnWindowFocus: true, // Cambiado a true para actualizar al volver a la ventana
+    refetchInterval: 1000 * 60 * 2, // Añadido: actualiza cada 2 minutos automáticamente
   });
 
   const posts = data?.posts || [];
@@ -107,12 +108,6 @@ const HomePostList = () => {
       
       {/* Botón para ver más noticias */}
       <div className="text-center mt-8">
-        {/* <Link 
-          to="/posts" 
-          className="inline-block bg-blue-800 hover:bg-blue-900 text-white font-medium py-2 px-6 rounded-md transition-colors"
-        >
-          Ver todas las noticias
-        </Link> */}
       </div>
     </div>
   );

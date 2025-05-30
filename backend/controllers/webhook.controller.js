@@ -27,7 +27,7 @@ export const clerkWebHook = async (req, res) => {
 
   if (evt.type === "user.created") {
     console.log("Received user.created event. Full data:", JSON.stringify(evt.data, null, 2));
-    console.log("Clerk User ID from event data:", evt.data.id); // ¡Muy importante!
+    console.log("Clerk User ID from event data:", evt.data.id); 
 
     const clerkIdFromEvent = evt.data.id;
     const emailFromEvent = evt.data.email_addresses[0].email_address;
@@ -42,9 +42,8 @@ export const clerkWebHook = async (req, res) => {
 
     const newUser = new User({
         clerkUserId: clerkIdFromEvent,
-        username: usernameFromEvent, // Asegúrate que esto también sea único si el esquema lo requiere
-        email: emailFromEvent,       // Asegúrate que esto también sea único si el esquema lo requiere
-        // img: evt.data.profile_image_url || evt.data.image_url, // Comenta temporalmente si sospechas
+        username: usernameFromEvent, 
+        email: emailFromEvent,       
     });
 
     try {

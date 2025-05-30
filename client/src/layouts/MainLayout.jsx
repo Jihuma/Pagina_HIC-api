@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router-dom"
 import Navbar from "../components/Navbar"
-import { useState, useEffect } from "react" // Importamos useState y useEffect
-import GlobalDataManager from "../components/GlobalDataManager" // Importar nuestro componente
+import { useState, useEffect } from "react" 
+import GlobalDataManager from "../components/GlobalDataManager" 
 
 const MainLayout = () => {
   // Estado para detectar si se ha hecho scroll

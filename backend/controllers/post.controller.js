@@ -1,6 +1,8 @@
 import ImageKit from "imagekit";
 import Post from "../models/post.model.js";
 import User from "../models/user.model.js";
+// Añadir esta importación al principio del archivo junto con las otras importaciones
+import Category from "../models/category.model.js";
 
 // Inicialización de ImageKit dentro de una función para asegurar que las variables de entorno estén cargadas
 let imagekit;
@@ -115,7 +117,21 @@ export const createPost = async (req, res) => {
     counter++;
   }
 
-  const newPost = new Post({ user: user._id, slug, ...req.body });
+  // Si no se proporciona una categoría, obtener la primera categoría disponible
+  let postData = { ...req.body };
+  if (!postData.category) {
+    try {
+      // Obtener la primera categoría disponible
+      const firstCategory = await Category.findOne().sort({ name: 1 });
+      if (firstCategory) {
+        postData.category = firstCategory.slug;
+      }
+    } catch (error) {
+      console.error("Error al obtener categoría por defecto:", error);
+    }
+  }
+
+  const newPost = new Post({ user: user._id, slug, ...postData });
 
   const post = await newPost.save();
   res.status(200).json(post);
@@ -169,6 +185,19 @@ export const featurePost = async (req, res) => {
   }
 
   const isFeatured = post.isFeatured;
+
+  // Si estamos intentando destacar un post (no quitarle el destacado)
+  if (!isFeatured) {
+    // Contar cuántos posts destacados hay actualmente
+    const featuredCount = await Post.countDocuments({ isFeatured: true });
+    
+    // Si ya hay 3 posts destacados, no permitir destacar más
+    if (featuredCount >= 3) {
+      return res.status(400).json({
+        message: "No se pueden destacar más de 3 posts. Quita el destacado a uno existente primero."
+      });
+    }
+  }
 
   const updatedPost = await Post.findByIdAndUpdate(
     postId,

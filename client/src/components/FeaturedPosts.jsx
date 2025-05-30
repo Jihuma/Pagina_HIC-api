@@ -22,8 +22,9 @@ const FeaturedPosts = () => {
   } = useQuery({
     queryKey: ['featuredPosts'],
     queryFn: fetchFeaturedPosts,
-    staleTime: 1000 * 60 * 5, // 5 minutos
-    refetchOnWindowFocus: false,
+    staleTime: 0, // Cambiar a 0 para que siempre considere los datos como obsoletos
+    refetchOnWindowFocus: true, // Recargar cuando la ventana recupera el foco
+    refetchInterval: 10000, // Recargar cada 10 segundos
   });
 
   // Preparar los slides basados en los posts destacados
