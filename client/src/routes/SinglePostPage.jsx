@@ -40,7 +40,6 @@ const SinglePostPage = () => {
   // Consulta para obtener las categorías
   const {
     data: categoriesData,
-    error: categoriesError,
     status: categoriesStatus,
   } = useQuery({
     queryKey: ['categories'],
@@ -52,23 +51,19 @@ const SinglePostPage = () => {
   });
 
   // Nueva consulta para obtener posts relacionados por categoría
-  const {
-    data: relatedPostsData,
-    error: relatedPostsError,
-    status: relatedPostsStatus,
-  } = useQuery({
+  useQuery({
     queryKey: ['relatedPosts', data?.category],
     queryFn: async () => {
       if (!data?.category) return { posts: [] };
-      
+
       const res = await axios.get(`${import.meta.env.VITE_API_URL}/posts`, {
-        params: { 
+        params: {
           cat: data.category,
           limit: 2,
           page: 1
         }
       });
-      
+
       // Filtrar para excluir el post actual
       const filteredPosts = res.data.posts.filter(post => post._id !== data._id);
       return { posts: filteredPosts.slice(0, 2) }; // Asegurar máximo 2 artículos
@@ -81,7 +76,7 @@ const SinglePostPage = () => {
   });
 
   // Componente PuzzleCard para las categorías
-  const PuzzleCard = ({ children, pieceBg, pageBg, className, style, onClick }) => {
+  const PuzzleCard = ({ children, pieceBg, className, style, onClick }) => {
     return (
       <div 
         className={`puzzle-piece relative ${pieceBg} rounded-lg p-4 shadow-md transition-all duration-300 hover:shadow-lg ${className}`}
@@ -154,15 +149,10 @@ const SinglePostPage = () => {
          setSubmitError("Por favor ingrese un número de teléfono válido.");
          return;
       }
-
-      // console.log("Enviando formulario:", formData); // Log para depuración
-
-      // Asegúrate de que el endpoint `/contact-forms` exista en tu backend
-      // y esté preparado para recibir estos datos.
       await axios.post(`${import.meta.env.VITE_API_URL}/api/contact-forms`, {
         ...formData,
         postId: data?._id, // Relacionar con el artículo actual, verificar si data existe
-        postTitle: data?.title // Opcional: enviar el título del post para referencia
+        postTitle: data?.title 
       });
 
       setFormSubmitted(true); // Indicar que el formulario fue enviado exitosamente
@@ -179,11 +169,8 @@ const SinglePostPage = () => {
     </div>
   );
   
-  // Modificar esta parte donde se maneja el error
   if (error) {
-    // Si tenemos datos en caché, mostrarlos aunque haya un error en la recarga
     if (data) {
-      // Mostrar un toast o notificación sutil en lugar de página de error completa
       console.error("Error al actualizar datos:", error);
       
     } else {
@@ -222,19 +209,20 @@ const SinglePostPage = () => {
     if (!dateString) return "Fecha no disponible";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Fecha inválida";
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return date.toLocaleDateString('es-ES', options);
+    
+    // Obtener los componentes de la fecha
+    const day = date.getDate();
+    const month = date.toLocaleString('es-ES', { month: 'short' });
+    const year = date.getFullYear();
+    
+    return `${day} ${month}, ${year}`;
   };
-
   const handleNextStep = () => {
-    // Si estamos en el paso 3, el botón "Siguiente" se convierte en "Enviar"
-    // y debe llamar a handleSubmitForm.
     if (currentStep === 3) {
         handleSubmitForm();
-    } else if (currentStep < 4) { // Para los pasos 1 y 2, simplemente avanza.
+    } else if (currentStep < 4) { // pasos 1 y 2, simplemente avanza
         changeStep(currentStep + 1);
     }
-    // Si currentStep es 4 (éxito), este botón no debería estar visible.
   };
 
   const handlePreviousStep = () => {
@@ -256,16 +244,6 @@ const SinglePostPage = () => {
     return "";
   };
   
-  const resetFormAndStartOver = () => {
-    setFormData({
-        parentName: "", parentSurname: "", childName: "", childGender: "",
-        childAge: "", childBirthDate: "", contactPhone: "", contactEmail: "",
-        consultationReason: ""
-    });
-    setFormSubmitted(false);
-    setSubmitError(null);
-    changeStep(1);
-  };
 
 
   return (
@@ -284,41 +262,55 @@ const SinglePostPage = () => {
         <div className="relative flex-grow -mx-4 md:-mx-8 lg:-mx-16 xl:-mx-32 2xl:-mx-64 px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 py-8 bg-[#eff6ff]">
           <div className="absolute top-[-5px] left-0 right-0 h-1 shadow-top-bottom"></div>
 
-          <div className="mb-8 mt-6 pt-8">
-            <h1 className="text-4xl font-bold text-gray-800 mb-4">{data.title}</h1>
-            <div className="flex flex-wrap items-center text-sm text-gray-600 mb-2">
-              <span>Por </span>
-              {data.user ? (
-                <Link to={`/author/${data.user.username}`} className="text-blue-600 hover:underline mx-1">
-                  {data.user.username}
-                </Link>
-              ) : (
-                <span className="text-gray-600 mx-1">Autor desconocido</span>
-              )}
-              <span className="mx-1">•</span>
-              <span>Publicado el {formatDate(data.createdAt)}</span>
-              <span className="mx-1">•</span>
-              <span>Categoría: </span>
-              <Link to={`/posts?cat=${data.category}`} className="text-blue-600 hover:underline mx-1">
-                {data.category}
-              </Link>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3">
+              {/* 1. Imagen principal del post */}
               {data.img && (
-                <div className="mb-8 bg-white p-4 rounded-lg shadow-sm">
+                <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
                   <Image 
                     src={data.img} 
                     className="w-full h-auto max-h-[500px] object-cover rounded-lg shadow-md" 
-                    w="1200" // Asegúrate que estos valores sean strings si IKImage los espera así
-                    h="500"  // O números si eso es lo que espera
+                    w="1200"
+                    h="500"
                     alt={data.title || "Imagen del artículo"}
                   />
                 </div>
               )}
               
+              {/* 2. Título del post */}
+              <div className="mb-4">
+                <h1 className="text-4xl font-bold text-gray-800 mb-4">{data.title}</h1>
+                
+                {/* 3. Información del autor, fecha y categoría */}
+                <div className="flex flex-wrap items-center text-sm text-gray-600 mb-4">
+                  <i className="fas fa-user-circle text-gray-500 mr-1"></i>
+                  <span>Por </span>
+                  {data.user ? (
+                    <Link to={`/author/${data.user.username}`} className="text-blue-600 hover:underline mx-1">
+                      {data.user.username}
+                    </Link>
+                  ) : (
+                    <span className="text-gray-600 mx-1">Autor desconocido</span>
+                  )}
+                  <span className="mx-1">•</span>
+                  <i className="fas fa-calendar-alt text-gray-500 mr-1"></i>
+                  <span>Publicado: {formatDate(data.createdAt)}</span>
+                  <span className="mx-1">•</span>
+                  <span>Categoría: </span>
+                  <Link to={`/posts?cat=${data.category}`} className="text-blue-600 hover:underline mx-1">
+                    {data.category}
+                  </Link>
+                </div>
+                
+                {/* 4. Descripción del post con estilo morado */}
+                {data.desc && (
+                  <div className="mb-6 text-lg text-purple-700 bg-purple-50 p-5 rounded-lg border-l-4 border-purple-400 shadow-sm">
+                    {sanitizedDesc}
+                  </div>
+                )}
+              </div>
+              
+              {/* 5. Contenido completo del post */}
               <div 
                 className="post-content prose prose-lg prose-img:m-0 prose-img:!inline max-w-none mb-12 bg-white p-6 rounded-lg shadow-sm"
               >
@@ -329,9 +321,9 @@ const SinglePostPage = () => {
                 )}
               </div>
               
-                <h2 className="text-3xl font-bold text-center text-gray-700 mb-8">
-                  Formulario de Contacto Médico para Padres
-                </h2>
+              <h2 className="text-3xl font-bold text-center text-gray-700 mb-8">
+                Formulario de Contacto Médico para Padres
+              </h2>
               <div className="mb-12 bg-white rounded-lg shadow-lg p-6 md:p-8 text-gray-800">
                 
                 {/* Indicador de progreso */}
@@ -518,7 +510,7 @@ const SinglePostPage = () => {
                     ) : ( <div></div> ) /* Placeholder para mantener el botón "Siguiente" a la derecha */}
                     
                     <button 
-                      onClick={handleNextStep} // Esta función ahora llama a handleSubmitForm en el paso 3
+                      onClick={handleNextStep} 
                       className="bg-purple-500 hover:bg-purple-600 text-white py-2 px-6 rounded-md transition duration-300"
                     >
                       {currentStep === 3 ? 'Enviar Formulario' : 'Siguiente'}

@@ -1,30 +1,55 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@clerk/clerk-react';
 import { toast } from 'react-toastify';
+import axios from 'axios';
 
 const GlobalDataManager = () => {
   const queryClient = useQueryClient();
   const { getToken, isSignedIn } = useAuth();
+  const reconnectingRef = useRef(false);
+  const reconnectTimeoutRef = useRef(null);
+  const pingIntervalRef = useRef(null);
+
+  // Función para verificar la conexión al backend
+  const checkBackendConnection = async () => {
+    try {
+      await axios.get(`${import.meta.env.VITE_API_URL}/posts?limit=1`, { timeout: 10000 });
+      return true;
+    } catch (error) {
+      console.error('Error al verificar conexión con backend:', error);
+      return false;
+    }
+  };
 
   // Manejar cambios de visibilidad de la página
   useEffect(() => {
-    let reconnectTimeout;
-    let isReconnecting = false;
-
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         console.log('Página visible de nuevo, verificando conexión...');
         
         // Evitar múltiples reconexiones simultáneas
-        if (isReconnecting) return;
-        isReconnecting = true;
+        if (reconnectingRef.current) return;
+        reconnectingRef.current = true;
         
         try {
           // Verificar conexión a internet
           const online = navigator.onLine;
           if (!online) {
             console.log('Sin conexión a internet, esperando reconexión...');
+            reconnectingRef.current = false;
+            return;
+          }
+          
+          // Verificar conexión al backend
+          const backendConnected = await checkBackendConnection();
+          if (!backendConnected) {
+            console.log('No se puede conectar al backend, reintentando más tarde...');
+            // Programar un reintento
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              handleVisibilityChange();
+            }, 5000);
             return;
           }
           
@@ -46,8 +71,11 @@ const GlobalDataManager = () => {
         } catch (error) {
           console.error('Error durante la reconexión:', error);
         } finally {
-          isReconnecting = false;
+          reconnectingRef.current = false;
         }
+      } else if (document.visibilityState === 'hidden') {
+        // Cuando la página está oculta, pausar algunas operaciones
+        console.log('Página en segundo plano');
       }
     };
 
@@ -57,16 +85,20 @@ const GlobalDataManager = () => {
       toast.success('Conexión restaurada');
       
       // Esperar un momento antes de revalidar para asegurar que la conexión es estable
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = setTimeout(async () => {
-        if (!isReconnecting) {
-          isReconnecting = true;
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = setTimeout(async () => {
+        if (!reconnectingRef.current) {
+          reconnectingRef.current = true;
           try {
-            await queryClient.invalidateQueries();
+            const backendConnected = await checkBackendConnection();
+            if (backendConnected) {
+              await queryClient.invalidateQueries();
+              console.log('Datos revalidados después de reconexión');
+            }
           } catch (error) {
             console.error('Error al revalidar datos después de reconexión:', error);
           } finally {
-            isReconnecting = false;
+            reconnectingRef.current = false;
           }
         }
       }, 2000);
@@ -74,9 +106,22 @@ const GlobalDataManager = () => {
 
     const handleOffline = () => {
       console.log('Conexión a internet perdida');
-      // Comentamos el toast para que no se muestre el mensaje
-      // toast.error('Conexión a internet perdida. Intentando reconectar...');
     };
+
+    // Configurar un ping periódico para mantener la conexión activa
+    pingIntervalRef.current = setInterval(async () => {
+      if (navigator.onLine && document.visibilityState === 'visible' && !reconnectingRef.current) {
+        try {
+          const backendConnected = await checkBackendConnection();
+          if (!backendConnected) {
+            console.log('Ping detectó pérdida de conexión, intentando reconectar...');
+            await queryClient.invalidateQueries();
+          }
+        } catch (error) {
+          console.error('Error durante ping periódico:', error);
+        }
+      }
+    }, 3 * 60 * 1000); // Cada 3 minutos
 
     // Registrar listeners para eventos de visibilidad y conexión
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -87,7 +132,8 @@ const GlobalDataManager = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      clearTimeout(reconnectTimeout);
+      clearTimeout(reconnectTimeoutRef.current);
+      clearInterval(pingIntervalRef.current);
     };
   }, [queryClient, isSignedIn, getToken]);
 

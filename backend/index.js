@@ -11,6 +11,7 @@ import webHookRouter from "./routes/webhook.route.js"
 import userPostsRouter from "./routes/userPosts.route.js"
 import contactFormRouter from "./routes/contactForm.route.js" 
 import { clerkMiddleware, requireAuth } from '@clerk/express'
+import setupHeartbeat from "./lib/heartbeat.js";
 import cors from "cors"
 
 
@@ -45,7 +46,8 @@ app.use((error, req, res, next)=>{
     })
 })
 
-app.listen(3000, ()=>{
-    connectDB()
-    console.log("Sever is running!")
-})
+app.listen(3000, async () => {
+    await connectDB();
+    setupHeartbeat(); // Iniciar heartbeat
+    console.log("Server is running!");
+});
